@@ -55,7 +55,8 @@ function buildCommandWithDirectory(commandName, args) {
     opencodeCmd += ` --model="${cmdConfig.model}"`;
   }
   
-  opencodeCmd += ` --prompt="${cmdConfig.prompt} ${sanitized}"`;
+  const additionalInstructions = '\n\n请确保：\n1. 最终输出研究报告\n2. 严格遵循openspec宪法文件中要求的格式和流程\n3. 完成proposal制定后自动apply开始实施\n4. 最终需要archive当前的proposal\n5. 将内容提交到远程服务器';
+  opencodeCmd += ` --prompt="${cmdConfig.prompt} ${sanitized}${additionalInstructions}"`;
   
   return `cd ${cmdConfig.dir} && ${opencodeCmd}`;
 }
