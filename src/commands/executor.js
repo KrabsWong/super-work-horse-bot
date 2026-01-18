@@ -55,7 +55,11 @@ function buildCommandWithDirectory(commandName, args) {
     opencodeCmd += ` --model="${cmdConfig.model}"`;
   }
   
-  const additionalInstructions = '\n\n请确保：\n1. 最终输出研究报告\n2. 严格遵循openspec宪法文件中要求的格式和流程\n3. 完成proposal制定后自动apply开始实施\n4. 最终需要archive当前的proposal\n5. 将内容提交到远程服务器';
+  if (cmdConfig.full_auto) {
+    opencodeCmd += ' --full-auto';
+  }
+  
+  const additionalInstructions = '\n\n【重要】在开始处理任务前，必须先执行以下步骤：\n1. 必须首先读取 openspec/project.md 文件，以了解：\n   - 项目目的和技术栈\n   - 代码风格规范\n   - 架构模式\n   - 测试策略\n   - Git 工作流程\n   - 领域背景和用户工作流\n   - 重要约束和外部依赖\n2. 只有在理解项目结构、工作流程和相关约束后，才能开始执行任务\n\n请确保：\n1. 最终输出研究报告\n2. 严格遵循openspec宪法文件中要求的格式和流程\n3. 完成proposal制定后自动apply开始实施\n4. 最终需要archive当前的proposal\n5. 将内容提交到远程服务器';
   opencodeCmd += ` --prompt="${cmdConfig.prompt} ${sanitized}${additionalInstructions}"`;
   
   return `cd ${cmdConfig.dir} && ${opencodeCmd}`;

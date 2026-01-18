@@ -11,13 +11,13 @@ export const config = {
 
 /**
  * Load command configurations from environment variables
- * Parses COMMAND_<NAME>_DIR, COMMAND_<NAME>_PROMPT, COMMAND_<NAME>_SESSION, COMMAND_<NAME>_MODEL
+ * Parses COMMAND_<NAME>_DIR, COMMAND_<NAME>_PROMPT, COMMAND_<NAME>_SESSION, COMMAND_<NAME>_MODEL, COMMAND_<NAME>_FULL_AUTO
  * @returns {Object} Commands configuration object
  */
 function loadCommandConfigs() {
   const commands = {};
   const envVars = process.env;
-  const commandPattern = /^COMMAND_([A-Z]+)_(DIR|PROMPT|SESSION|MODEL)$/;
+  const commandPattern = /^COMMAND_([A-Z]+)_(DIR|PROMPT|SESSION|MODEL|FULL_AUTO)$/;
   
   // Parse all COMMAND_* environment variables
   for (const [key, value] of Object.entries(envVars)) {
@@ -30,7 +30,12 @@ function loadCommandConfigs() {
         commands[commandName] = {};
       }
       
-      commands[commandName][property] = value;
+      // Convert FULL_AUTO to boolean
+      if (property === 'full_auto') {
+        commands[commandName][property] = value.toLowerCase() === 'true' || value === '1';
+      } else {
+        commands[commandName][property] = value;
+      }
     }
   }
   
