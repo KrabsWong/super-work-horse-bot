@@ -48,7 +48,16 @@ function buildCommandWithDirectory(commandName, args) {
   }
   
   // Build the command: cd to directory && execute opencode
-  return `cd ${cmdConfig.dir} && opencode --prompt="${cmdConfig.prompt} ${sanitized}"`;
+  // Model parameter comes before prompt parameter
+  let opencodeCmd = 'opencode';
+  
+  if (cmdConfig.model) {
+    opencodeCmd += ` --model="${cmdConfig.model}"`;
+  }
+  
+  opencodeCmd += ` --prompt="${cmdConfig.prompt} ${sanitized}"`;
+  
+  return `cd ${cmdConfig.dir} && ${opencodeCmd}`;
 }
 
 /**
@@ -119,6 +128,12 @@ export async function executeCommand(commandName, args, context = {}) {
   try {
     command = buildCommandWithDirectory(commandName, args);
     console.log(`✓ Built command: ${command}`);
+    
+    // Log model parameter if configured
+    const cmdConfig = config.commands[commandName];
+    if (cmdConfig.model) {
+      console.log(`ℹ Using model: ${cmdConfig.model}`);
+    }
   } catch (error) {
     console.log(`✗ Failed to build command: ${error.message}`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

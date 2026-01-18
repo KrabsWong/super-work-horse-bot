@@ -11,13 +11,13 @@ export const config = {
 
 /**
  * Load command configurations from environment variables
- * Parses COMMAND_<NAME>_DIR, COMMAND_<NAME>_PROMPT, COMMAND_<NAME>_SESSION
+ * Parses COMMAND_<NAME>_DIR, COMMAND_<NAME>_PROMPT, COMMAND_<NAME>_SESSION, COMMAND_<NAME>_MODEL
  * @returns {Object} Commands configuration object
  */
 function loadCommandConfigs() {
   const commands = {};
   const envVars = process.env;
-  const commandPattern = /^COMMAND_([A-Z]+)_(DIR|PROMPT|SESSION)$/;
+  const commandPattern = /^COMMAND_([A-Z]+)_(DIR|PROMPT|SESSION|MODEL)$/;
   
   // Parse all COMMAND_* environment variables
   for (const [key, value] of Object.entries(envVars)) {
@@ -51,6 +51,12 @@ function loadCommandConfigs() {
     // Validate directory path (basic security check)
     if (cmdConfig.dir && cmdConfig.dir.includes(';')) {
       console.error(`✗ ERROR: Command '${name}' has invalid directory path (contains semicolon)`);
+      delete commands[name];
+    }
+    
+    // Validate model parameter (basic security check)
+    if (cmdConfig.model && (cmdConfig.model.includes(';') || cmdConfig.model.includes('|') || cmdConfig.model.includes('&'))) {
+      console.error(`✗ ERROR: Command '${name}' has invalid model parameter (contains dangerous characters)`);
       delete commands[name];
     }
   }
