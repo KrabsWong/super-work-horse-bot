@@ -6,13 +6,13 @@ export const config = {
 
 /**
  * Load command configurations from environment variables
- * Parses COMMAND_<NAME>_DIR, COMMAND_<NAME>_PROMPT, COMMAND_<NAME>_SESSION, COMMAND_<NAME>_MODEL, COMMAND_<NAME>_FULL_AUTO
+ * Parses COMMAND_<NAME>_DIR, COMMAND_<NAME>_PROMPT, COMMAND_<NAME>_SESSION, COMMAND_<NAME>_MODEL
  * @returns {Object} Commands configuration object
  */
 function loadCommandConfigs() {
   const commands = {};
   const envVars = Bun.env;
-  const commandPattern = /^COMMAND_([A-Z]+)_(DIR|PROMPT|SESSION|MODEL|FULL_AUTO)$/;
+  const commandPattern = /^COMMAND_([A-Z]+)_(DIR|PROMPT|SESSION|MODEL)$/;
   
   // Parse all COMMAND_* environment variables
   for (const [key, value] of Object.entries(envVars)) {
@@ -25,12 +25,7 @@ function loadCommandConfigs() {
         commands[commandName] = {};
       }
       
-      // Convert FULL_AUTO to boolean
-      if (property === 'full_auto') {
-        commands[commandName][property] = value.toLowerCase() === 'true' || value === '1';
-      } else {
-        commands[commandName][property] = value;
-      }
+      commands[commandName][property] = value;
     }
   }
   

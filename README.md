@@ -53,13 +53,12 @@ A Telegram bot server that receives slash commands and executes corresponding se
     TELEGRAM_BOT_TOKEN=your_bot_token_here
     LOG_LEVEL=info
     
-    # Command Configuration
+     # Command Configuration
     COMMAND_RESEARCH_DIR=~/workspace/research
     COMMAND_RESEARCH_PROMPT=/openspec:proposal
     COMMAND_RESEARCH_SESSION=research-bot
     COMMAND_RESEARCH_MODEL=opencode/glm-4.7-free
-    COMMAND_RESEARCH_FULL_AUTO=true
-    ```
+     ```
 
 ## Getting Your Bot Token
 
@@ -100,11 +99,9 @@ In Telegram, send:
 ```
 
  This will execute on your server:
- ```bash
- cd ~/workspace/research && opencode --model="opencode/glm-4.7-free" --full-auto --prompt="/openspec:proposal 帮我生成一份研究报告，介绍新能源汽车领域涉及到哪些技术"
- ```
-
- (Note: `--full-auto` is only added if `COMMAND_RESEARCH_FULL_AUTO=true` is configured)
+  ```bash
+  cd ~/workspace/research && opencode --model="opencode/glm-4.7-free" --prompt="/openspec:proposal 帮我生成一份研究报告，介绍新能源汽车领域涉及到哪些技术"
+  ```
 
 The command runs in a dedicated tmux session named `research-bot` (configurable via `COMMAND_RESEARCH_SESSION`).
 
@@ -148,20 +145,17 @@ server-tele-bot/
 |----------|----------|---------|-------------|
  | `TELEGRAM_BOT_TOKEN` | Yes | - | Your Telegram bot token from @BotFather |
  | `COMMAND_<NAME>_DIR` | Yes | - | Working directory for the command |
- | `COMMAND_<NAME>_PROMPT` | Yes | - | OpenCode prompt format for the command |
- | `COMMAND_<NAME>_SESSION` | No | `<name>-bot` | tmux session name for the command |
- | `COMMAND_<NAME>_MODEL` | No | - | AI model to use (e.g., `opencode/glm-4.7-free`) |
- | `COMMAND_<NAME>_FULL_AUTO` | No | `false` | Reduce confirmations and enable direct tmp directory access |
- | `LOG_LEVEL` | No | `info` | Logging level: debug, info, warn, error |
+  | `COMMAND_<NAME>_PROMPT` | Yes | - | OpenCode prompt format for the command |
+  | `COMMAND_<NAME>_SESSION` | No | `<name>-bot` | tmux session name for the command |
+  | `COMMAND_<NAME>_MODEL` | No | - | AI model to use (e.g., `opencode/glm-4.7-free`) |
+  | `LOG_LEVEL` | No | `info` | Logging level: debug, info, warn, error |
 
- **Command Configuration Format:**
+  **Command Configuration Format:**
  - Replace `<NAME>` with your command name in UPPERCASE (e.g., `RESEARCH`, `PROPOSAL`)
  - The Telegram command will be lowercase (e.g., `/research`, `/proposal`)
- - Each command must have at least `DIR` and `PROMPT` configured
- - `MODEL` is optional - if not specified, opencode will use its default model
- - `FULL_AUTO` is optional - when set to `true`, adds `--full-auto` to reduce confirmations and enable direct tmp directory access
- - When `MODEL` is configured, the `--model` parameter is placed before `--prompt` in the generated command
- - When `FULL_AUTO` is set to `true`, the `--full-auto` parameter is added to the opencode command
+  - Each command must have at least `DIR` and `PROMPT` configured
+  - `MODEL` is optional - if not specified, opencode will use its default model
+  - When `MODEL` is configured, the `--model` parameter is placed before `--prompt` in the generated command
 
 ### Adding Custom Commands
 
@@ -169,14 +163,13 @@ You can easily add new commands by adding environment variables to your `.env` f
 
  **Example: Add a `/proposal` command**
 
- ```env
- # Add to your .env file
- COMMAND_PROPOSAL_DIR=~/workspace/myproject
- COMMAND_PROPOSAL_PROMPT=/proposal
- COMMAND_PROPOSAL_SESSION=proposal-bot
- COMMAND_PROPOSAL_MODEL=opencode/glm-4.7-free
- COMMAND_PROPOSAL_FULL_AUTO=false
- ```
+  ```env
+  # Add to your .env file
+  COMMAND_PROPOSAL_DIR=~/workspace/myproject
+  COMMAND_PROPOSAL_PROMPT=/proposal
+  COMMAND_PROPOSAL_SESSION=proposal-bot
+  COMMAND_PROPOSAL_MODEL=opencode/glm-4.7-free
+  ```
 
 Then restart the bot:
 ```bash
@@ -187,13 +180,12 @@ The `/proposal` command will now be available automatically!
 
  **Example: Add a `/codereview` command**
 
- ```env
- COMMAND_CODEREVIEW_DIR=~/workspace/reviews
- COMMAND_CODEREVIEW_PROMPT=/code-review
- COMMAND_CODEREVIEW_SESSION=review-bot
- COMMAND_CODEREVIEW_MODEL=opencode/claude-sonnet-4.5
- COMMAND_CODEREVIEW_FULL_AUTO=true
- ```
+  ```env
+  COMMAND_CODEREVIEW_DIR=~/workspace/reviews
+  COMMAND_CODEREVIEW_PROMPT=/code-review
+  COMMAND_CODEREVIEW_SESSION=review-bot
+  COMMAND_CODEREVIEW_MODEL=opencode/claude-sonnet-4.5
+  ```
 
 **How it works:**
 1. Bot reads all `COMMAND_*` environment variables at startup
