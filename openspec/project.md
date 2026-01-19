@@ -6,10 +6,10 @@ Server-side Telegram bot that enables remote execution of server commands (speci
 
 ## Tech Stack
 
-- **Runtime**: Node.js v18+ (ES6 modules)
+- **Runtime**: Bun v1+ (ES6 modules)
 - **Bot Framework**: Telegraf v4.x (Telegram Bot API wrapper)
 - **Session Management**: tmux (terminal multiplexer)
-- **Configuration**: dotenv (environment variables)
+- **Configuration**: Bun built-in environment variables
 - **External Tools**: opencode CLI (AI coding assistant)
 
 ## Project Conventions

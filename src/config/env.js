@@ -1,11 +1,6 @@
-import dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config();
-
 export const config = {
-  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
-  logLevel: process.env.LOG_LEVEL || 'info',
+  telegramBotToken: Bun.env.TELEGRAM_BOT_TOKEN,
+  logLevel: Bun.env.LOG_LEVEL || 'info',
   commands: loadCommandConfigs(),
 };
 
@@ -16,7 +11,7 @@ export const config = {
  */
 function loadCommandConfigs() {
   const commands = {};
-  const envVars = process.env;
+  const envVars = Bun.env;
   const commandPattern = /^COMMAND_([A-Z]+)_(DIR|PROMPT|SESSION|MODEL|FULL_AUTO)$/;
   
   // Parse all COMMAND_* environment variables

@@ -13,7 +13,7 @@ A Telegram bot server that receives slash commands and executes corresponding se
 
 ## Prerequisites
 
-- **Node.js** v18.0.0 or higher
+- **Bun** v1.0.0 or higher
 - **tmux** installed on your server
 - **opencode** CLI tool available in PATH
 - A Telegram bot token (get one from [@BotFather](https://t.me/BotFather))
@@ -27,9 +27,9 @@ A Telegram bot server that receives slash commands and executes corresponding se
    ```
 
 2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+    ```bash
+    bun install
+    ```
 
 3. **Install tmux (if not already installed):**
    ```bash
@@ -75,12 +75,12 @@ A Telegram bot server that receives slash commands and executes corresponding se
 
 **Development mode (with auto-reload):**
 ```bash
-npm run dev
+bun run dev
 ```
 
 **Production mode:**
 ```bash
-npm start
+bun start
 ```
 
 ### Available Commands
@@ -180,7 +180,7 @@ You can easily add new commands by adding environment variables to your `.env` f
 
 Then restart the bot:
 ```bash
-npm start
+bun start
 ```
 
 The `/proposal` command will now be available automatically!
@@ -267,14 +267,14 @@ sudo yum install tmux      # CentOS/RHEL
 ### Using PM2 (Recommended for production)
 
 1. **Install PM2:**
-   ```bash
-   npm install -g pm2
-   ```
+    ```bash
+    bun install -g pm2
+    ```
 
 2. **Start the bot:**
-   ```bash
-   pm2 start src/index.js --name telegram-bot
-   ```
+    ```bash
+    pm2 start --name telegram-bot -- bun src/index.js
+    ```
 
 3. **Configure auto-restart on system boot:**
    ```bash
@@ -292,21 +292,21 @@ sudo yum install tmux      # CentOS/RHEL
 
 1. **Create a service file** `/etc/systemd/system/telegram-bot.service`:
    ```ini
-   [Unit]
-   Description=Telegram Bot Server
-   After=network.target
+    [Unit]
+    Description=Telegram Bot Server
+    After=network.target
 
-   [Service]
-   Type=simple
-   User=your-username
-   WorkingDirectory=/path/to/server-tele-bot
-   ExecStart=/usr/bin/node src/index.js
-   Restart=always
-   Environment=NODE_ENV=production
+    [Service]
+    Type=simple
+    User=your-username
+    WorkingDirectory=/path/to/server-tele-bot
+    ExecStart=/home/ubuntu/.bun/bin/bun src/index.js
+    Restart=always
+    Environment=NODE_ENV=production
 
-   [Install]
-   WantedBy=multi-user.target
-   ```
+    [Install]
+    WantedBy=multi-user.target
+    ```
 
 2. **Enable and start:**
    ```bash
@@ -321,7 +321,7 @@ sudo yum install tmux      # CentOS/RHEL
 
 Tests are coming in a future version. For now, test manually by:
 
-1. Starting the bot: `npm run dev`
+1. Starting the bot: `bun run dev`
 2. Sending test commands on Telegram
 3. Checking server logs and tmux session output
 
@@ -340,9 +340,9 @@ Commands are now configuration-driven! To add a new command, simply add environm
    ```
 
 2. **Restart the bot:**
-   ```bash
-   npm start
-   ```
+    ```bash
+    bun start
+    ```
 
 That's it! No code changes needed. The command is automatically:
 - Validated at startup
