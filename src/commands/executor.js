@@ -58,13 +58,13 @@ function buildCommandWithDirectory(commandName, args) {
   const additionalInstructions = `
 IMPORTANT INSTRUCTIONS:
 1. This is a RESEARCH task.
-2. **STEP 1**: Read \"openspec/project.md\".
-3. **STEP 2 (Routing)**: Based on my request, CHOOSE the most appropriate template from the \"Template Selection Strategy\" section.
-   - If I asked for features/pricing -> Use \"product-requirement-standard.md\"
-   - If I asked for feasibility/integration -> Use \"tech-feasibility-standard.md\"
+2. **STEP 1**: Read 'openspec/project.md'.
+3. **STEP 2 (Routing)**: Based on my request, CHOOSE the most appropriate template from the Template Selection Strategy section.
+   - If I asked for features/pricing -> Use 'product-requirement-standard.md'
+   - If I asked for feasibility/integration -> 'Use tech-feasibility-standard.md'
 4. **Action**: Create the directory and generated files strictly following the chosen template's structure.
 5. **Language**: Report content in CHINESE (中文).
-6. **Output**: Start by stating: \"Identifying Intent... Selected Template: [Template Name]\".
+6. **Output**: Start by stating: 'Identifying Intent... Selected Template: [Template Name]'.
 `;
   opencodeCmd += ` --prompt="${cmdConfig.prompt} ${sanitized}${additionalInstructions}"`;
   
