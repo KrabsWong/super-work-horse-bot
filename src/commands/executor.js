@@ -56,12 +56,14 @@ function buildCommandWithDirectory(commandName, args) {
   }
   
   const additionalInstructions = `
-  IMPORTANT: The text above is a RESEARCH TOPIC, NOT a coding task. 
-1. First, READ openspec/project.md to understand your role as a Researcher.
-2. DO NOT implement this feature. DO NOT write functional code files.
-3. Your ONLY output goal is to create a new directory (following project.md naming rules) and generate a detailed MARKDOWN report explaining the solution/findings.
-4. If code examples are needed, put them inside the Markdown file only.
-5. Start by reading project.md now.`;
+IMPORTANT INSTRUCTIONS:
+1. This is a RESEARCH task. NO functional code implementation.
+2. **STRUCTURE**: Do NOT create a single large file. You MUST split the content into multiple modular files (e.g., "01-xxx.md", "02-xxx.md") based on the topic.
+3. **INDEX**: You MUST create a "README.md" in the directory as the entry point linking to all sub-files.
+4. **LANGUAGE**: Content in CHINESE (中文), Filenames and Directory name in English.
+5. **ACTION**: Execute "openspec archive" AND "git push" at the end.
+6. Read "openspec/project.md" and start.
+`;
   opencodeCmd += ` --prompt="${cmdConfig.prompt} ${sanitized}${additionalInstructions}"`;
   
   return `cd ${cmdConfig.dir} && ${opencodeCmd}`;
