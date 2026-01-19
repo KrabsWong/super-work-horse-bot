@@ -57,12 +57,14 @@ function buildCommandWithDirectory(commandName, args) {
   
   const additionalInstructions = `
 IMPORTANT INSTRUCTIONS:
-1. This is a RESEARCH task. NO functional code implementation.
-2. **STRUCTURE**: Do NOT create a single large file. You MUST split the content into multiple modular files (e.g., "01-xxx.md", "02-xxx.md") based on the topic.
-3. **INDEX**: You MUST create a "README.md" in the directory as the entry point linking to all sub-files.
-4. **LANGUAGE**: Content in CHINESE (中文), Filenames and Directory name in English.
-5. **ACTION**: Execute "openspec archive" AND "git push" at the end.
-6. Read "openspec/project.md" and start.
+1. This is a RESEARCH task.
+2. **STEP 1**: Read "openspec/project.md".
+3. **STEP 2 (Routing)**: Based on my request, CHOOSE the most appropriate template from the "Template Selection Strategy" section.
+   - If I asked for features/pricing -> Use "product-requirement-standard.md"
+   - If I asked for feasibility/integration -> Use "tech-feasibility-standard.md"
+4. **Action**: Create the directory and generated files strictly following the chosen template's structure.
+5. **Language**: Report content in CHINESE (中文).
+6. **Output**: Start by stating: "Identifying Intent... Selected Template: [Template Name]".
 `;
   opencodeCmd += ` --prompt="${cmdConfig.prompt} ${sanitized}${additionalInstructions}"`;
   
