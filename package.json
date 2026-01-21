@@ -2,11 +2,12 @@
   "name": "server-tele-bot",
   "version": "1.0.0",
   "description": "Telegram bot server for triggering server-side commands like opencode",
-  "main": "src/index.js",
+  "main": "src/index.ts",
   "type": "module",
   "scripts": {
-    "start": "bun src/index.js",
-    "dev": "bun --watch src/index.js"
+    "start": "bun src/index.ts",
+    "dev": "bun --watch src/index.ts",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "telegram",
@@ -22,5 +23,9 @@
   },
   "dependencies": {
     "telegraf": "^4.16.3"
+  },
+  "devDependencies": {
+    "bun-types": "^1.0.0",
+    "typescript": "^5.9.3"
   }
 }

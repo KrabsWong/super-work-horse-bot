@@ -1,13 +1,16 @@
+import type { Context, MiddlewareFn } from 'telegraf';
+import type { Message, Update } from 'telegraf/types';
+
 /**
  * Logging middleware for Telegraf bot
  * Logs all incoming messages with relevant details
  */
-export function loggingMiddleware() {
+export function loggingMiddleware(): MiddlewareFn<Context<Update>> {
   return async (ctx, next) => {
     const timestamp = new Date().toISOString();
     const from = ctx.from;
     const chat = ctx.chat;
-    const message = ctx.message;
+    const message = ctx.message as Message.TextMessage | undefined;
     
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log(`[${timestamp}] Incoming message`);
@@ -35,8 +38,9 @@ export function loggingMiddleware() {
  * Error handling middleware for Telegraf bot
  * Catches and logs errors, prevents bot from crashing
  */
-export function errorHandlingMiddleware() {
-  return async (ctx, error) => {
+export function errorHandlingMiddleware(): (error: unknown, ctx: Context<Update>) => Promise<void> {
+  return async (err: unknown, ctx: Context<Update>) => {
+    const error = err instanceof Error ? err : new Error(String(err));
     const timestamp = new Date().toISOString();
     console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.error(`[${timestamp}] Error occurred`);
@@ -52,10 +56,11 @@ export function errorHandlingMiddleware() {
     // Send generic error message to user (don't leak system details)
     try {
       await ctx.reply(
-        '❌ Sorry, an error occurred while processing your request. Please try again later.'
+        'Sorry, an error occurred while processing your request. Please try again later.'
       );
     } catch (replyError) {
-      console.error(`Failed to send error message to user: ${replyError.message}`);
+      const replyErrorMessage = replyError instanceof Error ? replyError.message : 'Unknown error';
+      console.error(`Failed to send error message to user: ${replyErrorMessage}`);
     }
   };
 }

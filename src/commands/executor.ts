@@ -1,12 +1,11 @@
-import { executeInTmux } from '../tmux/session.js';
-import { config } from '../config/env.js';
+import { executeInTmux } from '../tmux/session';
+import { config } from '../config/env';
+import type { ExecutionResult, ValidationResult, ExecutionContext } from '../types';
 
 /**
  * Sanitize user input to prevent command injection
- * @param {string} input - User input to sanitize
- * @returns {string} - Sanitized input
  */
-export function sanitizeInput(input) {
+export function sanitizeInput(input: string): string {
   if (!input || typeof input !== 'string') {
     return '';
   }
@@ -28,11 +27,8 @@ export function sanitizeInput(input) {
 
 /**
  * Build opencode command with directory change and proper prompt format
- * @param {string} commandName - Name of the command (e.g., 'research')
- * @param {string} args - The prompt text from user
- * @returns {string} - Complete command with cd and opencode
  */
-function buildCommandWithDirectory(commandName, args) {
+function buildCommandWithDirectory(commandName: string, args: string): string {
   const sanitized = sanitizeInput(args);
   if (!sanitized) {
     throw new Error('Prompt cannot be empty');
@@ -73,11 +69,8 @@ IMPORTANT INSTRUCTIONS:
 
 /**
  * Validate command input
- * @param {string} commandName - Name of the command (e.g., 'research')
- * @param {string} args - Command arguments
- * @returns {Object} - Validation result {valid: boolean, error?: string}
  */
-export function validateCommand(commandName, args) {
+export function validateCommand(commandName: string, args: string): ValidationResult {
   // Check if command is configured
   const availableCommands = Object.keys(config.commands);
   if (!availableCommands.includes(commandName)) {
@@ -108,12 +101,12 @@ export function validateCommand(commandName, args) {
 
 /**
  * Execute a whitelisted command
- * @param {string} commandName - Name of the command (e.g., 'research')
- * @param {string} args - Command arguments
- * @param {Object} context - Execution context (userId, chatId, etc.)
- * @returns {Promise<Object>} - Execution result {success: boolean, error?: string}
  */
-export async function executeCommand(commandName, args, context = {}) {
+export async function executeCommand(
+  commandName: string,
+  args: string,
+  context: ExecutionContext = {}
+): Promise<ExecutionResult> {
   const timestamp = new Date().toISOString();
   
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -126,7 +119,7 @@ export async function executeCommand(commandName, args, context = {}) {
   // Validate command
   const validation = validateCommand(commandName, args);
   if (!validation.valid) {
-    console.log(`✗ Validation failed: ${validation.error}`);
+    console.log(`Validation failed: ${validation.error}`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     return {
       success: false,
@@ -135,36 +128,37 @@ export async function executeCommand(commandName, args, context = {}) {
   }
   
   // Build command
-  let command;
+  let command: string;
   try {
     command = buildCommandWithDirectory(commandName, args);
-    console.log(`✓ Built command: ${command}`);
+    console.log(`Built command: ${command}`);
     
     // Log model parameter if configured
     const cmdConfig = config.commands[commandName];
     if (cmdConfig.model) {
-      console.log(`ℹ Using model: ${cmdConfig.model}`);
+      console.log(`Using model: ${cmdConfig.model}`);
     }
   } catch (error) {
-    console.log(`✗ Failed to build command: ${error.message}`);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.log(`Failed to build command: ${errorMessage}`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     return {
       success: false,
-      error: error.message,
+      error: errorMessage,
     };
   }
   
   // Get session name for this command
   const sessionName = config.commands[commandName].session;
-  console.log(`ℹ Using tmux session: ${sessionName}`);
+  console.log(`Using tmux session: ${sessionName}`);
   
   // Execute in tmux
   const success = await executeInTmux(command, sessionName);
   
   if (success) {
-    console.log(`✓ Command executed successfully`);
+    console.log(`Command executed successfully`);
   } else {
-    console.log(`✗ Command execution failed`);
+    console.log(`Command execution failed`);
   }
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   

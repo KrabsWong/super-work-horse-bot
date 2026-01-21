@@ -6,21 +6,25 @@ Server-side Telegram bot that enables remote execution of server commands (speci
 
 ## Tech Stack
 
-- **Runtime**: Bun v1+ (ES6 modules)
+- **Runtime**: Bun v1+ (native TypeScript support)
+- **Language**: TypeScript with strict mode
 - **Bot Framework**: Telegraf v4.x (Telegram Bot API wrapper)
 - **Session Management**: tmux (terminal multiplexer)
-- **Configuration**: Bun built-in environment variables
+- **Configuration**: Bun built-in environment variables (Bun.env)
 - **External Tools**: opencode CLI (AI coding assistant)
 
 ## Project Conventions
 
 ### Code Style
 
-- ES6+ JavaScript with import/export modules
+- Pure TypeScript with strict type checking
+- Native TypeScript types (no JSDoc type annotations)
+- Centralized type definitions in `src/types/index.ts`
+- Bun-native APIs (Bun.spawn for subprocess, Bun.env for environment)
 - Async/await for asynchronous operations
 - Clear, descriptive function and variable names
-- Comprehensive JSDoc comments for public functions
-- Console logging with visual separators (━) and emoji indicators (✓, ✗, ℹ)
+- Explicit return types on all functions
+- Console logging with visual separators (━)
 
 ### Architecture Patterns
 

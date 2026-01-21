@@ -1,25 +1,22 @@
-export const config = {
-  telegramBotToken: Bun.env.TELEGRAM_BOT_TOKEN,
-  logLevel: Bun.env.LOG_LEVEL || 'info',
-  commands: loadCommandConfigs(),
-};
+import type { Config, CommandConfig } from '../types';
 
 /**
  * Load command configurations from environment variables
  * Parses COMMAND_<NAME>_DIR, COMMAND_<NAME>_PROMPT, COMMAND_<NAME>_SESSION, COMMAND_<NAME>_MODEL
- * @returns {Object} Commands configuration object
  */
-function loadCommandConfigs() {
-  const commands = {};
+function loadCommandConfigs(): Record<string, CommandConfig> {
+  const commands: Record<string, Partial<CommandConfig>> = {};
   const envVars = Bun.env;
   const commandPattern = /^COMMAND_([A-Z]+)_(DIR|PROMPT|SESSION|MODEL)$/;
   
   // Parse all COMMAND_* environment variables
   for (const [key, value] of Object.entries(envVars)) {
+    if (!value) continue;
+    
     const match = key.match(commandPattern);
     if (match) {
       const commandName = match[1].toLowerCase(); // e.g., "RESEARCH" -> "research"
-      const property = match[2].toLowerCase();     // e.g., "DIR" -> "dir"
+      const property = match[2].toLowerCase() as keyof CommandConfig; // e.g., "DIR" -> "dir"
       
       if (!commands[commandName]) {
         commands[commandName] = {};
@@ -32,35 +29,44 @@ function loadCommandConfigs() {
   // Validate each command has required properties
   for (const [name, cmdConfig] of Object.entries(commands)) {
     if (!cmdConfig.dir) {
-      console.warn(`⚠ Warning: Command '${name}' is missing DIR configuration`);
+      console.warn(`Warning: Command '${name}' is missing DIR configuration`);
     }
     if (!cmdConfig.prompt) {
-      console.warn(`⚠ Warning: Command '${name}' is missing PROMPT configuration`);
+      console.warn(`Warning: Command '${name}' is missing PROMPT configuration`);
     }
     if (!cmdConfig.session) {
       // Set default session name if not specified
       cmdConfig.session = `${name}-bot`;
-      console.log(`ℹ Using default session name for '${name}': ${cmdConfig.session}`);
+      console.log(`Using default session name for '${name}': ${cmdConfig.session}`);
     }
     
     // Validate directory path (basic security check)
     if (cmdConfig.dir && cmdConfig.dir.includes(';')) {
-      console.error(`✗ ERROR: Command '${name}' has invalid directory path (contains semicolon)`);
+      console.error(`ERROR: Command '${name}' has invalid directory path (contains semicolon)`);
       delete commands[name];
+      continue;
     }
     
     // Validate model parameter (basic security check)
     if (cmdConfig.model && (cmdConfig.model.includes(';') || cmdConfig.model.includes('|') || cmdConfig.model.includes('&'))) {
-      console.error(`✗ ERROR: Command '${name}' has invalid model parameter (contains dangerous characters)`);
+      console.error(`ERROR: Command '${name}' has invalid model parameter (contains dangerous characters)`);
       delete commands[name];
     }
   }
   
-  return commands;
+  return commands as Record<string, CommandConfig>;
 }
 
-// Validate required configuration
-export function validateConfig() {
+export const config: Config = {
+  telegramBotToken: Bun.env.TELEGRAM_BOT_TOKEN || '',
+  logLevel: Bun.env.LOG_LEVEL || 'info',
+  commands: loadCommandConfigs(),
+};
+
+/**
+ * Validate required configuration
+ */
+export function validateConfig(): void {
   if (!config.telegramBotToken) {
     console.error('ERROR: TELEGRAM_BOT_TOKEN is required in environment variables');
     console.error('Please create a .env file with your bot token (see .env.example)');
@@ -79,5 +85,5 @@ export function validateConfig() {
     process.exit(1);
   }
   
-  console.log(`✓ Loaded ${commandNames.length} command(s): ${commandNames.join(', ')}`);
+  console.log(`Loaded ${commandNames.length} command(s): ${commandNames.join(', ')}`);
 }
