@@ -7,6 +7,7 @@ A Telegram bot server that receives slash commands and executes corresponding se
 - 🤖 **Telegram Bot Integration** - Uses Telegraf framework for reliable message handling
 - 🔐 **Configurable Commands** - Define custom commands with working directories via environment variables
 - 🖥️ **tmux Session Management** - Each command has its own tmux session (creates when needed, reuses when exists)
+- 🔔 **GitHub Push Notifications** - Optional GitHub Actions integration to receive Telegram notifications on push (see [.github/workflows/README.md](.github/workflows/README.md))
 - ⚡ **Simple Setup** - Easy configuration with environment variables
 - 🔄 **Flexible Architecture** - Add new commands without code changes
 - 📝 **Comprehensive Logging** - Detailed logs for debugging and auditing
