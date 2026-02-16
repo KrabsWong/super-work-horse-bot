@@ -135,12 +135,12 @@ export async function executeInTmux(command: string, sessionName: string): Promi
     console.error('Session name is required');
     return false;
   }
-  
+
   console.log(`Executing command in tmux session '${sessionName}'...`);
-  
+
   // Check if session exists
   const exists = await sessionExists(sessionName);
-  
+
   // Create session if it doesn't exist
   if (!exists) {
     const created = await createSession(sessionName);
@@ -149,7 +149,24 @@ export async function executeInTmux(command: string, sessionName: string): Promi
       return false;
     }
   }
-  
+
   // Send command to session
   return await sendCommand(command, sessionName);
+}
+
+export async function sendCtrlC(sessionName: string): Promise<boolean> {
+  if (!sessionName) {
+    console.error('Session name is required');
+    return false;
+  }
+
+  const { exitCode } = await execShellCommand(`tmux send-keys -t ${sessionName} C-c`);
+
+  if (exitCode === 0) {
+    console.log(`Sent Ctrl+C to session '${sessionName}'`);
+    return true;
+  }
+
+  console.error(`Failed to send Ctrl+C to session '${sessionName}'`);
+  return false;
 }

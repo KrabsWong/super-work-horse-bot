@@ -5,6 +5,7 @@ import { loggingMiddleware, errorHandlingMiddleware } from './bot/middleware';
 import {
   handleStart,
   handleHelp,
+  handleFinish,
   createCommandHandler,
   handleUnknown,
 } from './bot/handlers';
@@ -40,7 +41,8 @@ async function main(): Promise<void> {
   // Register static command handlers
   bot.command('start', handleStart);
   bot.command('help', handleHelp);
-  
+  bot.command('finish', handleFinish);
+
   // Dynamically register command handlers from config
   const commandNames = Object.keys(config.commands);
   for (const commandName of commandNames) {

@@ -2,6 +2,7 @@ import type { Context, NarrowedContext } from 'telegraf';
 import type { Update, Message } from 'telegraf/types';
 import { executeCommand } from '../commands/executor';
 import { config } from '../config/env';
+import { sendCtrlC } from '../tmux/session';
 
 type TextMessageContext = NarrowedContext<Context<Update>, Update.MessageUpdate<Message.TextMessage>>;
 
@@ -12,12 +13,13 @@ export async function handleStart(ctx: TextMessageContext): Promise<void> {
   const username = ctx.from.username || ctx.from.first_name || 'there';
   const commandNames = Object.keys(config.commands);
   const commandList = commandNames.map(cmd => `/${cmd} <text> - Execute opencode in configured workspace`).join('\n');
-  
+
   await ctx.reply(
     `Hello @${username}!\n\n` +
     `I'm VibeCodingBot, your server command assistant.\n\n` +
     `Available commands:\n` +
     `${commandList}\n` +
+    `/finish - 终止 research 命令的 opencode 进程\n` +
     `/help - Show this help message\n\n` +
     `Example:\n` +
     `/${commandNames[0] || 'command'} 帮我生成一份研究报告，介绍新能源汽车领域涉及到哪些技术`
@@ -42,6 +44,8 @@ export async function handleHelp(ctx: TextMessageContext): Promise<void> {
   await ctx.reply(
     `Help - Available Commands\n\n` +
     `${commandDetails}` +
+    `/finish\n` +
+    `  终止 research 命令的 opencode 进程\n\n` +
     `/help\n` +
     `  Show this help message\n\n` +
     `/start\n` +
@@ -108,9 +112,25 @@ export function createCommandHandler(commandName: string): (ctx: TextMessageCont
   };
 }
 
-/**
- * Handler for unknown commands
- */
+export async function handleFinish(ctx: TextMessageContext): Promise<void> {
+  const researchConfig = config.commands['research'];
+
+  if (!researchConfig) {
+    await ctx.reply('❌ 未配置 research 命令');
+    return;
+  }
+
+  await ctx.reply('正在发送停止信号... ⏳');
+
+  const success = await sendCtrlC(researchConfig.session);
+
+  if (success) {
+    await ctx.reply(`✅ 已向 research session (${researchConfig.session}) 发送 Ctrl+C`);
+  } else {
+    await ctx.reply(`❌ 发送失败，session (${researchConfig.session}) 可能不存在`);
+  }
+}
+
 export async function handleUnknown(ctx: Context<Update>): Promise<void> {
   await ctx.reply(
     'Unknown command.\n\n' +
