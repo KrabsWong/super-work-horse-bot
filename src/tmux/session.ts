@@ -208,15 +208,35 @@ export async function hasOpencodeProcess(sessionName: string): Promise<boolean> 
   }
 }
 
-/**
- * Kill all opencode processes in a tmux session
- */
+const GRACEFUL_SHUTDOWN_TIMEOUT_MS = 5000;
+const GRACEFUL_SHUTDOWN_POLL_INTERVAL_MS = 500;
+
 export async function killOpencodeInSession(sessionName: string): Promise<number> {
   if (!sessionName) {
     return 0;
   }
 
   try {
+    const hasProcess = await hasOpencodeProcess(sessionName);
+    if (!hasProcess) {
+      return 0;
+    }
+
+    console.log(`Sending Ctrl+C to session ${sessionName} for graceful shutdown...`);
+    await sendCtrlC(sessionName);
+
+    const startTime = Date.now();
+    while (Date.now() - startTime < GRACEFUL_SHUTDOWN_TIMEOUT_MS) {
+      await new Promise(resolve => setTimeout(resolve, GRACEFUL_SHUTDOWN_POLL_INTERVAL_MS));
+      const stillRunning = await hasOpencodeProcess(sessionName);
+      if (!stillRunning) {
+        console.log(`opencode process in session ${sessionName} exited gracefully`);
+        return 1;
+      }
+    }
+
+    console.log(`Graceful shutdown timed out, force killing opencode in session ${sessionName}...`);
+
     const { stdout } = await execShellCommand(
       `tmux list-panes -t ${sessionName} -F '#{pane_pid}' 2>/dev/null`
     );
@@ -234,7 +254,7 @@ export async function killOpencodeInSession(sessionName: string): Promise<number
       for (const opencodePid of opencodePids) {
         const { exitCode } = await execShellCommand(`kill ${opencodePid} 2>/dev/null || true`);
         if (exitCode === 0) {
-          console.log(`Killed opencode process ${opencodePid} in session ${sessionName}`);
+          console.log(`Force killed opencode process ${opencodePid} in session ${sessionName}`);
           killedCount++;
         }
       }
