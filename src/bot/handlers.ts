@@ -1,7 +1,7 @@
 import type { Context, NarrowedContext } from 'telegraf';
 import type { Update, Message } from 'telegraf/types';
 import { executeCommand } from '../commands/executor';
-import { config } from '../config/env';
+import { config } from '../config';
 import { sendCtrlC } from '../tmux/session';
 
 type TextMessageContext = NarrowedContext<Context<Update>, Update.MessageUpdate<Message.TextMessage>>;

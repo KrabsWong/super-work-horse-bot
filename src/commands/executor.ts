@@ -1,5 +1,5 @@
 import { executeInTmux } from '../tmux/session';
-import { config } from '../config/env';
+import { config } from '../config';
 import type { ExecutionResult, ValidationResult, ExecutionContext } from '../types';
 
 /**
