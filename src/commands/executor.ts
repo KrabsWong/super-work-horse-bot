@@ -1,5 +1,6 @@
 import { executeInTmux } from '../tmux/session';
 import { config } from '../config';
+import { startMonitoring, generateStatusFilePath, buildCompletionInstruction } from '../monitor';
 import type { ExecutionResult, ValidationResult, ExecutionContext } from '../types';
 
 /**
@@ -10,25 +11,28 @@ export function sanitizeInput(input: string): string {
     return '';
   }
   
-  // Remove or escape dangerous characters
-  // This is a basic sanitization - input is wrapped in quotes in the final command
   const sanitized = input
-    .replace(/`/g, '')      // Remove backticks
-    .replace(/\$/g, '')     // Remove dollar signs
-    .replace(/;/g, '')      // Remove semicolons
-    .replace(/&/g, '')      // Remove ampersands
-    .replace(/\|/g, '')     // Remove pipes
-    .replace(/>/g, '')      // Remove redirects
-    .replace(/</g, '')      // Remove redirects
+    .replace(/`/g, '')
+    .replace(/\$/g, '')
+    .replace(/;/g, '')
+    .replace(/&/g, '')
+    .replace(/\|/g, '')
+    .replace(/>/g, '')
+    .replace(/</g, '')
     .trim();
   
   return sanitized;
 }
 
+interface BuiltCommand {
+  command: string;
+  statusFile: string | null;
+}
+
 /**
  * Build opencode command with directory change and proper prompt format
  */
-function buildCommandWithDirectory(commandName: string, args: string): string {
+function buildCommandWithDirectory(commandName: string, args: string, enableMonitoring: boolean): BuiltCommand {
   const sanitized = sanitizeInput(args);
   if (!sanitized) {
     throw new Error('Prompt cannot be empty');
@@ -43,15 +47,13 @@ function buildCommandWithDirectory(commandName: string, args: string): string {
     throw new Error(`Command '${commandName}' is missing DIR or PROMPT configuration`);
   }
   
-  // Build the command: cd to directory && execute opencode
-  // Model parameter comes before prompt parameter
   let opencodeCmd = 'opencode';
   
   if (cmdConfig.model) {
     opencodeCmd += ` --model="${cmdConfig.model}"`;
   }
   
-  const additionalInstructions = `
+  let additionalInstructions = `
 IMPORTANT INSTRUCTIONS:
 1. This is a RESEARCH task.
 2. **STEP 1**: Read 'openspec/project.md'.
@@ -62,16 +64,26 @@ IMPORTANT INSTRUCTIONS:
 5. **Language**: Report content in CHINESE (中文).
 6. **Output**: Start by stating: 'Identifying Intent... Selected Template: [Template Name]'.
 `;
+
+  let statusFile: string | null = null;
+  
+  if (enableMonitoring) {
+    statusFile = generateStatusFilePath(cmdConfig.session);
+    additionalInstructions += buildCompletionInstruction(statusFile);
+  }
+  
   opencodeCmd += ` --prompt="${cmdConfig.prompt} ${sanitized}${additionalInstructions}"`;
   
-  return `cd ${cmdConfig.dir} && ${opencodeCmd}`;
+  return {
+    command: `cd ${cmdConfig.dir} && ${opencodeCmd}`,
+    statusFile,
+  };
 }
 
 /**
  * Validate command input
  */
 export function validateCommand(commandName: string, args: string): ValidationResult {
-  // Check if command is configured
   const availableCommands = Object.keys(config.commands);
   if (!availableCommands.includes(commandName)) {
     return {
@@ -80,7 +92,6 @@ export function validateCommand(commandName: string, args: string): ValidationRe
     };
   }
   
-  // Check if arguments are provided
   if (!args || args.trim().length === 0) {
     return {
       valid: false,
@@ -88,7 +99,6 @@ export function validateCommand(commandName: string, args: string): ValidationRe
     };
   }
   
-  // Check length limits (prevent extremely long commands)
   if (args.length > 2000) {
     return {
       valid: false,
@@ -108,6 +118,7 @@ export async function executeCommand(
   context: ExecutionContext = {}
 ): Promise<ExecutionResult> {
   const timestamp = new Date().toISOString();
+  const enableMonitoring = (context.enableMonitoring !== false) && !!context.telegram && !!context.chatId;
   
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(`[${timestamp}] Command execution requested`);
@@ -115,8 +126,8 @@ export async function executeCommand(
   console.log(`  Args: ${args}`);
   console.log(`  User ID: ${context.userId || 'unknown'}`);
   console.log(`  Chat ID: ${context.chatId || 'unknown'}`);
+  console.log(`  Monitoring: ${enableMonitoring ? 'enabled' : 'disabled'}`);
   
-  // Validate command
   const validation = validateCommand(commandName, args);
   if (!validation.valid) {
     console.log(`Validation failed: ${validation.error}`);
@@ -127,16 +138,17 @@ export async function executeCommand(
     };
   }
   
-  // Build command
-  let command: string;
+  let builtCommand: BuiltCommand;
   try {
-    command = buildCommandWithDirectory(commandName, args);
-    console.log(`Built command: ${command}`);
+    builtCommand = buildCommandWithDirectory(commandName, args, enableMonitoring);
+    console.log(`Built command: ${builtCommand.command}`);
     
-    // Log model parameter if configured
     const cmdConfig = config.commands[commandName];
     if (cmdConfig.model) {
       console.log(`Using model: ${cmdConfig.model}`);
+    }
+    if (builtCommand.statusFile) {
+      console.log(`Status file: ${builtCommand.statusFile}`);
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -148,15 +160,23 @@ export async function executeCommand(
     };
   }
   
-  // Get session name for this command
   const sessionName = config.commands[commandName].session;
   console.log(`Using tmux session: ${sessionName}`);
   
-  // Execute in tmux
-  const success = await executeInTmux(command, sessionName);
+  const success = await executeInTmux(builtCommand.command, sessionName);
   
   if (success) {
     console.log(`Command executed successfully`);
+    
+    if (enableMonitoring && builtCommand.statusFile && context.telegram && context.chatId) {
+      startMonitoring({
+        sessionName,
+        statusFile: builtCommand.statusFile,
+        telegram: context.telegram,
+        chatId: context.chatId,
+        taskName: `/${commandName}`,
+      });
+    }
   } else {
     console.log(`Command execution failed`);
   }
@@ -165,5 +185,6 @@ export async function executeCommand(
   return {
     success,
     error: success ? null : 'Command execution failed - please contact administrator',
+    statusFile: builtCommand.statusFile ?? undefined,
   };
 }
