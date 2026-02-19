@@ -1,4 +1,4 @@
-import type { Context, Telegraf } from 'telegraf';
+import type { Context, Telegraf, Telegram } from 'telegraf';
 
 /**
  * Configuration for a single command
@@ -14,12 +14,12 @@ export interface CommandConfig {
  * Configuration for a cron task
  */
 export interface CronTaskConfig {
-  schedule: string;        // Cron expression (e.g., "0 9 * * *")
-  dir: string;            // Working directory
-  session: string;        // Tmux session name (distinct from manual commands)
-  chatId: number;         // Telegram chat ID for notifications (must be a number, not string)
-  commandName: string;    // Reference to base command config (e.g., "research")
-  enabled: boolean;       // Whether this task is enabled
+  schedule: string;
+  dir: string;
+  session: string;
+  chatId: number;
+  commandName: string;
+  enabled: boolean;
 }
 
 /**
@@ -38,11 +38,17 @@ export interface Config {
 export type BotInstance = Telegraf;
 
 /**
+ * Telegram API client type (for sending messages)
+ */
+export type TelegramClient = Telegram | Telegraf['telegram'];
+
+/**
  * Result of command execution
  */
 export interface ExecutionResult {
   success: boolean;
   error?: string | null;
+  statusFile?: string;
 }
 
 /**
@@ -60,6 +66,8 @@ export interface ExecutionContext {
   userId?: number;
   username?: string;
   chatId?: number;
+  telegram?: TelegramClient;
+  enableMonitoring?: boolean;
 }
 
 /**
