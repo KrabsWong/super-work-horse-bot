@@ -36,9 +36,21 @@ export function generateStatusFilePath(sessionName: string): string {
 
 export function buildCompletionInstruction(statusFile: string): string {
   return `
-7. **COMPLETION**: After completing all tasks, execute the following command to signal completion:
-   touch ${statusFile}
-   This is CRITICAL - you MUST execute this command when done.
+7. **CRITICAL COMPLETION SEQUENCE** - You MUST follow this exact order:
+   
+   a) Complete ALL your tasks including:
+      - Research and analysis
+      - File creation/modification
+      - Git commit (if applicable)
+      - Git push to remote (if applicable)
+      - Any other operations
+   
+   b) ONLY AFTER everything is done, execute:
+      touch ${statusFile}
+   
+   c) This signal tells the system you have FULLY completed. Do NOT touch the file before all operations finish!
+   
+   IMPORTANT: If you commit and push to GitHub, make sure the push completes successfully BEFORE touching the status file.
 `;
 }
 
