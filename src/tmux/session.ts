@@ -170,3 +170,79 @@ export async function sendCtrlC(sessionName: string): Promise<boolean> {
   console.error(`Failed to send Ctrl+C to session '${sessionName}'`);
   return false;
 }
+
+/**
+ * Check if there are any opencode processes running in a tmux session
+ */
+export async function hasOpencodeProcess(sessionName: string): Promise<boolean> {
+  if (!sessionName) {
+    return false;
+  }
+
+  try {
+    const { stdout } = await execShellCommand(
+      `tmux list-panes -t ${sessionName} -F '#{pane_pid}' 2>/dev/null`
+    );
+
+    const panePids = stdout.trim().split('\n').filter(pid => pid);
+
+    for (const panePid of panePids) {
+      const { stdout: pgrepOut } = await execShellCommand(
+        `pgrep -P ${panePid} -f opencode 2>/dev/null || true`
+      );
+      if (pgrepOut.trim()) {
+        return true;
+      }
+
+      const { stdout: descendantsOut } = await execShellCommand(
+        `pstree -p ${panePid} 2>/dev/null | grep -E 'opencode\\(' || true`
+      );
+      if (descendantsOut.trim()) {
+        return true;
+      }
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Kill all opencode processes in a tmux session
+ */
+export async function killOpencodeInSession(sessionName: string): Promise<number> {
+  if (!sessionName) {
+    return 0;
+  }
+
+  try {
+    const { stdout } = await execShellCommand(
+      `tmux list-panes -t ${sessionName} -F '#{pane_pid}' 2>/dev/null`
+    );
+
+    const panePids = stdout.trim().split('\n').filter(pid => pid);
+    let killedCount = 0;
+
+    for (const panePid of panePids) {
+      const { stdout: pgrepOut } = await execShellCommand(
+        `pgrep -P ${panePid} -f opencode 2>/dev/null || true`
+      );
+
+      const opencodePids = pgrepOut.trim().split('\n').filter(pid => pid);
+
+      for (const opencodePid of opencodePids) {
+        const { exitCode } = await execShellCommand(`kill ${opencodePid} 2>/dev/null || true`);
+        if (exitCode === 0) {
+          console.log(`Killed opencode process ${opencodePid} in session ${sessionName}`);
+          killedCount++;
+        }
+      }
+    }
+
+    return killedCount;
+  } catch (error) {
+    console.error(`Failed to kill opencode processes in session ${sessionName}:`, error);
+    return 0;
+  }
+}
