@@ -1,16 +1,17 @@
-# Server Telegram Bot
+# VibeCodingBot
 
-A Telegram bot server that receives slash commands and executes corresponding server-side commands (like `opencode`) within tmux sessions.
+A Telegram bot server that receives slash commands and executes server-side AI coding workflows (via `opencode`) within tmux sessions. Supports scheduled tasks and real-time monitoring.
 
 ## Features
 
-- 🤖 **Telegram Bot Integration** - Uses Telegraf framework for reliable message handling
-- 🔐 **Configurable Commands** - Define custom commands with working directories via environment variables
-- 🖥️ **tmux Session Management** - Each command has its own tmux session (creates when needed, reuses when exists)
-- 🔔 **GitHub Push Notifications** - Optional GitHub Actions integration to receive Telegram notifications on push (see [.github/workflows/README.md](.github/workflows/README.md))
-- ⚡ **Simple Setup** - Easy configuration with environment variables
-- 🔄 **Flexible Architecture** - Add new commands without code changes
-- 📝 **Comprehensive Logging** - Detailed logs for debugging and auditing
+- **Telegram Bot Integration** - Uses Telegraf framework for reliable message handling
+- **YAML-based Configuration** - All settings managed through `config.yaml` (not environment variables)
+- **Dynamic Command Registration** - Commands defined in config, automatically registered at startup
+- **tmux Session Management** - Each command has its own tmux session (creates when needed, reuses when exists)
+- **Scheduled Tasks (Cron)** - Configure automatic execution using cron syntax
+- **Task Monitoring** - Automatic tracking of task completion with timeout protection (1 hour max)
+- **Graceful Process Control** - `/finish` command to stop running opencode processes
+- **Today in History Integration** - Smart research topic generation based on historical events
 
 ## Prerequisites
 
@@ -24,13 +25,13 @@ A Telegram bot server that receives slash commands and executes corresponding se
 1. **Clone the repository:**
    ```bash
    git clone <repository-url>
-   cd server-tele-bot
+   cd super-work-work-horse-bot
    ```
 
 2. **Install dependencies:**
-    ```bash
-    bun install
-    ```
+   ```bash
+   bun install
+   ```
 
 3. **Install tmux (if not already installed):**
    ```bash
@@ -44,22 +45,30 @@ A Telegram bot server that receives slash commands and executes corresponding se
    sudo yum install tmux
    ```
 
-4. **Configure environment variables:**
+4. **Configure the bot:**
    ```bash
-   cp .env.example .env
+   cp config.yaml.example config.yaml
    ```
    
-   Edit `.env` and configure your bot token and commands:
- ```env
-    TELEGRAM_BOT_TOKEN=your_bot_token_here
-    LOG_LEVEL=info
-    
-     # Command Configuration
-    COMMAND_RESEARCH_DIR=~/workspace/research
-    COMMAND_RESEARCH_PROMPT=/openspec:proposal
-    COMMAND_RESEARCH_SESSION=research-bot
-    COMMAND_RESEARCH_MODEL=opencode/glm-4.7-free
-     ```
+   Edit `config.yaml` and configure your bot token and commands:
+   ```yaml
+   telegramBotToken: your_bot_token_here
+   logLevel: info
+   
+   commands:
+     - name: research
+       dir: ~/workspace/research
+       prompt: /openspec:proposal
+       session: research-bot
+       model: opencode/kimi-k2.5-free
+   
+   cronTasks:
+     - name: daily-research
+       schedule: "0 9 * * *"
+       command: research
+       chatId: 123456789
+       enabled: true
+   ```
 
 ## Getting Your Bot Token
 
@@ -67,7 +76,7 @@ A Telegram bot server that receives slash commands and executes corresponding se
 2. Send `/newbot` command
 3. Follow the prompts to create your bot
 4. Copy the token provided by BotFather
-5. Add it to your `.env` file
+5. Add it to your `config.yaml` file
 
 ## Usage
 
@@ -89,8 +98,8 @@ Once the bot is running, you can interact with it on Telegram:
 
 - `/start` - Show welcome message
 - `/help` - Display help information
-- `/research <text>` - Execute opencode in configured workspace (example command)
-- Custom commands can be added via environment variables
+- `/finish` - Stop the running opencode process in research session
+- `/<command> <text>` - Execute opencode in configured workspace
 
 ### Example
 
@@ -108,248 +117,112 @@ The command runs in a dedicated tmux session named `research-bot` (configurable 
 
 ## How It Works
 
-1. **User sends command** - You send `/research <text>` (or any configured command) to the bot on Telegram
-2. **Bot receives message** - The server receives and validates the command
-3. **Command is sanitized** - Input is cleaned to prevent command injection
+1. **User sends command** - You send `/research <text>` to the bot on Telegram
+2. **Bot receives message** - Server validates the command against config
+3. **Input sanitization** - User input is cleaned to prevent command injection
 4. **tmux session check** - Bot checks if a tmux session exists
 5. **Session creation** - If no session exists, one is created automatically
-6. **Command execution** - The command is sent to the tmux session
-7. **Confirmation** - Bot confirms successful execution on Telegram
+6. **Command execution** - The opencode command is sent to the tmux session
+7. **Monitoring starts** - Bot monitors for task completion or timeout
+8. **Notification** - Bot sends completion notification to Telegram
 
 ## Project Structure
 
 ```
-server-tele-bot/
-├── package.json          # Project dependencies
-├── .env                  # Environment configuration (not in git)
-├── .env.example          # Example environment configuration
-├── README.md             # This file
+super-work-horse-bot/
+├── config.yaml              # Configuration file (not in git)
+├── config.yaml.example      # Example configuration
+├── package.json             # Project dependencies
+├── tsconfig.json            # TypeScript configuration
+├── README.md                # This file
 ├── src/
-│   ├── index.js          # Entry point, bot initialization
+│   ├── index.ts             # Entry point, bot initialization
+│   ├── types/
+│   │   └── index.ts         # TypeScript type definitions
+│   ├── config/
+│   │   └── index.ts         # YAML configuration loader
 │   ├── bot/
-│   │   ├── handlers.js   # Command handlers
-│   │   └── middleware.js # Logging, error handling
+│   │   ├── handlers.ts      # Command handlers
+│   │   └── middleware.ts    # Logging, error handling
 │   ├── tmux/
-│   │   └── session.js    # tmux session management
+│   │   └── session.ts       # tmux session management
 │   ├── commands/
-│   │   └── executor.js   # Command execution logic
-│   └── config/
-│       └── env.js        # Environment configuration
-└── openspec/             # OpenSpec design documents
+│   │   └── executor.ts     # Command execution logic
+│   ├── scheduler/
+│   │   └── index.ts         # Cron task scheduler
+│   └── monitor/
+│       └── index.ts         # Task monitoring & completion tracking
+└── openspec/                # OpenSpec design documents
 ```
 
 ## Configuration
 
-### Environment Variables
+### config.yaml Structure
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
- | `TELEGRAM_BOT_TOKEN` | Yes | - | Your Telegram bot token from @BotFather |
- | `COMMAND_<NAME>_DIR` | Yes | - | Working directory for the command |
-  | `COMMAND_<NAME>_PROMPT` | Yes | - | OpenCode prompt format for the command |
-  | `COMMAND_<NAME>_SESSION` | No | `<name>-bot` | tmux session name for the command |
-  | `COMMAND_<NAME>_MODEL` | No | - | AI model to use (e.g., `opencode/glm-4.7-free`) |
-  | `LOG_LEVEL` | No | `info` | Logging level: debug, info, warn, error |
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `telegramBotToken` | Yes | - | Your Telegram bot token from @BotFather |
+| `logLevel` | No | `info` | Logging level: debug, info, warn, error |
 
-  **Command Configuration Format:**
- - Replace `<NAME>` with your command name in UPPERCASE (e.g., `RESEARCH`, `PROPOSAL`)
- - The Telegram command will be lowercase (e.g., `/research`, `/proposal`)
-  - Each command must have at least `DIR` and `PROMPT` configured
-  - `MODEL` is optional - if not specified, opencode will use its default model
-  - When `MODEL` is configured, the `--model` parameter is placed before `--prompt` in the generated command
+### Command Configuration
 
-### Adding Custom Commands
+Each command in the `commands` array:
 
-You can easily add new commands by adding environment variables to your `.env` file:
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `name` | Yes | - | Command name (used as `/<name>`) |
+| `dir` | Yes | - | Working directory for the command |
+| `prompt` | Yes | - | OpenCode prompt format |
+| `session` | No | `<name>-bot` | tmux session name |
+| `model` | No | - | AI model (e.g., `opencode/kimi-k2.5-free`) |
 
- **Example: Add a `/proposal` command**
+### Cron Task Configuration
 
-  ```env
-  # Add to your .env file
-  COMMAND_PROPOSAL_DIR=~/workspace/myproject
-  COMMAND_PROPOSAL_PROMPT=/proposal
-  COMMAND_PROPOSAL_SESSION=proposal-bot
-  COMMAND_PROPOSAL_MODEL=opencode/glm-4.7-free
-  ```
+Each task in the `cronTasks` array:
 
-Then restart the bot:
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `name` | Yes | - | Task name (for logging) |
+| `schedule` | Yes | - | Cron expression (e.g., `0 9 * * *`) |
+| `command` | Yes | - | References a command name from `commands` |
+| `chatId` | Yes | - | Telegram chat ID to send notifications |
+| `dir` | No | inherits from command | Working directory |
+| `session` | No | `<command>-cron` | tmux session name |
+| `enabled` | No | `true` | Whether the task is active |
+
+### Example: Adding Custom Commands
+
+Add to your `config.yaml`:
+
+```yaml
+commands:
+  - name: research
+    dir: ~/workspace/research
+    prompt: /openspec:proposal
+    session: research-bot
+    model: opencode/kimi-k2.5-free
+  
+  - name: proposal
+    dir: ~/workspace/proposals
+    prompt: /proposal
+    session: proposal-bot
+    model: opencode/claude-sonnet-4.5
+```
+
+Restart the bot:
 ```bash
 bun start
 ```
 
-The `/proposal` command will now be available automatically!
-
- **Example: Add a `/codereview` command**
-
-  ```env
-  COMMAND_CODEREVIEW_DIR=~/workspace/reviews
-  COMMAND_CODEREVIEW_PROMPT=/code-review
-  COMMAND_CODEREVIEW_SESSION=review-bot
-  COMMAND_CODEREVIEW_MODEL=opencode/claude-sonnet-4.5
-  ```
-
-**How it works:**
-1. Bot reads all `COMMAND_*` environment variables at startup
-2. For each set of `DIR`, `PROMPT`, and `SESSION` variables, a command is created
-3. Commands are automatically registered with Telegraf
-4. Each command gets its own tmux session
-5. No code changes needed!
+The `/proposal` command will now be available!
 
 ## Security
 
-- **Command Configuration**: Only configured commands are allowed (defined via environment variables)
+- **Command Whitelisting**: Only configured commands can execute
 - **Input Sanitization**: User input is sanitized to prevent command injection
 - **No Token Logging**: Bot token is never logged to console or files
+- **Directory Validation**: Prevents directory traversal attacks
 - **Private Bot**: Intended for trusted users or private groups
-
-## Troubleshooting
-
-### Bot doesn't start
-
-**Problem**: `ERROR: TELEGRAM_BOT_TOKEN is required`
-
-**Solution**: Make sure you've created a `.env` file with your bot token:
-```bash
-cp .env.example .env
-# Edit .env and add your token
-```
-
----
-
-**Problem**: `ERROR: tmux is required but not found`
-
-**Solution**: Install tmux on your system:
-```bash
-# macOS
-brew install tmux
-
-# Linux
-sudo apt-get install tmux  # Debian/Ubuntu
-sudo yum install tmux      # CentOS/RHEL
-```
-
-### Commands not executing
-
-**Problem**: Bot responds but commands don't execute
-
-**Solution**: 
-1. Check if `opencode` is in your PATH:
-   ```bash
-   which opencode
-   ```
-2. Check tmux session status:
-   ```bash
-   tmux list-sessions
-   ```
-3. Attach to the session to see output:
-   ```bash
-   tmux attach -t research-bot  # or your configured session name
-   ```
-
-### Bot authentication fails
-
-**Problem**: `Failed to start bot: 401 Unauthorized`
-
-**Solution**: Your bot token is invalid. Get a new token from @BotFather:
-1. Send `/token` to @BotFather
-2. Select your bot
-3. Update the token in `.env`
-
-## Deployment
-
-### Using PM2 (Recommended for production)
-
-1. **Install PM2:**
-    ```bash
-    bun install -g pm2
-    ```
-
-2. **Start the bot:**
-    ```bash
-    pm2 start --name telegram-bot -- bun src/index.js
-    ```
-
-3. **Configure auto-restart on system boot:**
-   ```bash
-   pm2 startup
-   pm2 save
-   ```
-
-4. **Monitor the bot:**
-   ```bash
-   pm2 logs telegram-bot
-   pm2 status
-   ```
-
-### Using systemd
-
-1. **Create a service file** `/etc/systemd/system/telegram-bot.service`:
-   ```ini
-    [Unit]
-    Description=Telegram Bot Server
-    After=network.target
-
-    [Service]
-    Type=simple
-    User=your-username
-    WorkingDirectory=/path/to/server-tele-bot
-    ExecStart=/home/ubuntu/.bun/bin/bun src/index.js
-    Restart=always
-    Environment=NODE_ENV=production
-
-    [Install]
-    WantedBy=multi-user.target
-    ```
-
-2. **Enable and start:**
-   ```bash
-   sudo systemctl enable telegram-bot
-   sudo systemctl start telegram-bot
-   sudo systemctl status telegram-bot
-   ```
-
-## Development
-
-### Running Tests
-
-Tests are coming in a future version. For now, test manually by:
-
-1. Starting the bot: `bun run dev`
-2. Sending test commands on Telegram
-3. Checking server logs and tmux session output
-
-### Adding New Commands
-
-Commands are now configuration-driven! To add a new command, simply add environment variables:
-
-**Example: Add `/mycommand`**
-
-1. **Edit `.env` file:**
-   ```env
-   COMMAND_MYCOMMAND_DIR=~/workspace/mycommand
-   COMMAND_MYCOMMAND_PROMPT=/my-prompt
-   COMMAND_MYCOMMAND_SESSION=mycommand-bot
-   COMMAND_MYCOMMAND_MODEL=opencode/glm-4.7-free  # Optional
-   ```
-
-2. **Restart the bot:**
-    ```bash
-    bun start
-    ```
-
-That's it! No code changes needed. The command is automatically:
-- Validated at startup
-- Registered with Telegraf
-- Given its own tmux session
-- Available via `/mycommand` in Telegram
-
-### Configuration-Driven Architecture
-
-The bot uses a fully dynamic command system:
-- Commands loaded from `COMMAND_*` environment variables
-- Handlers created automatically at runtime
-- Each command has isolated working directory and tmux session
-- Easy to add, remove, or modify commands via `.env`
 
 ## Contributing
 
@@ -358,10 +231,3 @@ Contributions are welcome! Please follow the OpenSpec workflow defined in `opens
 ## License
 
 MIT
-
-## Support
-
-For issues and questions:
-- Check the [Troubleshooting](#troubleshooting) section
-- Review server logs: `pm2 logs telegram-bot` (if using PM2)
-- Check tmux session: `tmux list-sessions` then `tmux attach -t <session-name>`

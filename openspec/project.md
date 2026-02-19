@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Server-side Telegram bot that enables remote execution of server commands (specifically `opencode`) through Telegram chat. This allows developers to trigger AI-assisted coding workflows from any device with Telegram access, without requiring direct SSH access to the server.
+Telegram bot server that enables remote execution of AI coding workflows (via `opencode`) through Telegram chat. Supports scheduled tasks with automatic research topic generation based on "Today in History" events.
 
 ## Tech Stack
 
@@ -10,7 +10,8 @@ Server-side Telegram bot that enables remote execution of server commands (speci
 - **Language**: TypeScript with strict mode
 - **Bot Framework**: Telegraf v4.x (Telegram Bot API wrapper)
 - **Session Management**: tmux (terminal multiplexer)
-- **Configuration**: Bun built-in environment variables (Bun.env)
+- **Configuration**: YAML-based (js-yaml)
+- **Scheduler**: Croner v9.x (cron expressions)
 - **External Tools**: opencode CLI (AI coding assistant)
 
 ## Project Conventions
@@ -20,31 +21,34 @@ Server-side Telegram bot that enables remote execution of server commands (speci
 - Pure TypeScript with strict type checking
 - Native TypeScript types (no JSDoc type annotations)
 - Centralized type definitions in `src/types/index.ts`
-- Bun-native APIs (Bun.spawn for subprocess, Bun.env for environment)
+- Bun-native APIs (Bun.spawn for subprocess, Bun.file for file operations)
 - Async/await for asynchronous operations
 - Clear, descriptive function and variable names
 - Explicit return types on all functions
-- Console logging with visual separators (━)
+- Console logging with visual separators (`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
 
 ### Architecture Patterns
 
-- **Modular structure**: Separate concerns into bot/, tmux/, commands/, config/ directories
+- **Modular structure**: Separate concerns into bot/, tmux/, commands/, config/, scheduler/, monitor/ directories
 - **Command whitelisting**: Security-first approach - only approved commands can execute
+- **YAML configuration**: All settings in `config.yaml` (not environment variables)
 - **Graceful error handling**: Log errors server-side, send user-friendly messages to Telegram
 - **Fail-fast startup**: Validate configuration and dependencies before starting bot
 - **Middleware pattern**: Use Telegraf middleware for logging and error handling
+- **Task monitoring**: Automatic tracking with completion detection via status files
+- **Timeout protection**: Max 1 hour per task execution
 
 ### Testing Strategy
 
 - Manual testing via Telegram bot interaction
 - Validation checks at startup (config, tmux availability)
 - Comprehensive logging for debugging and auditing
-- Future: Add automated tests for command sanitization and tmux operations
+- TypeScript strict mode for compile-time safety
 
 ### Git Workflow
 
 - Follow OpenSpec workflow for changes (proposal → implementation → archive)
-- Keep .env files out of version control
+- Keep config.yaml out of version control
 - Commit messages should be clear and descriptive
 - Document breaking changes in commit messages
 
@@ -52,28 +56,41 @@ Server-side Telegram bot that enables remote execution of server commands (speci
 
 ### Key Concepts
 
-- **Slash Commands**: Telegram commands starting with `/` (e.g., `/proposal`)
+- **Slash Commands**: Telegram commands starting with `/` (e.g., `/research`)
 - **tmux Sessions**: Background terminal sessions that persist after disconnect
 - **Long-polling**: Bot update mode where bot requests updates from Telegram API
 - **Command Injection**: Security vulnerability where user input could execute arbitrary code
 - **Whitelisting**: Security pattern where only approved commands are allowed
+- **Cron Tasks**: Scheduled execution using cron expressions
+- **Status File**: Marker file created by opencode to signal task completion
+- **Today in History**: API integration for generating research topics
 
 ### User Workflow
 
 1. User opens Telegram and messages the bot
-2. User sends `/proposal <text>` command
+2. User sends `/research <text>` command
 3. Bot validates and sanitizes the input
 4. Bot checks if tmux session exists (creates if needed)
-5. Bot executes `opencode --prompt "/proposal <text>"` in tmux session
-6. Bot confirms execution to user on Telegram
-7. User can check tmux session for command output
+5. Bot executes `opencode --prompt "/research <text>"` in tmux session
+6. Bot monitors task execution (completion or timeout)
+7. Bot sends notification to user on completion or failure
+8. User can check tmux session for command output
+
+### Admin Workflow (Cron)
+
+1. Admin configures cron tasks in `config.yaml`
+2. Scheduler triggers task at configured time
+3. System fetches "Today in History" events from external API
+4. System selects positive/interesting event as research topic
+5. Bot executes opencode with generated topic
+6. Bot monitors and notifies on completion
 
 ## Important Constraints
 
 - **Single server deployment**: Not designed for distributed/multi-server setup
 - **Trusted users only**: No multi-user authentication beyond Telegram's built-in mechanisms
-- **Command whitelisting**: Only `/proposal` → `opencode` mapping is implemented
-- **No output streaming**: V1 doesn't capture or stream command output back to Telegram
+- **Command whitelisting**: Only configured commands in `config.yaml` can execute
+- **Task timeout**: Maximum 1 hour execution time before force stop
 - **Requires tmux**: Hard dependency on tmux being installed on server
 - **Requires opencode**: Assumes opencode CLI tool is available in PATH
 
@@ -90,8 +107,9 @@ Server-side Telegram bot that enables remote execution of server commands (speci
 - **PM2 or systemd**: For process management in production
 - **Git**: For version control (if deploying from repository)
 
-### Environment Variables
+### Configuration (config.yaml)
 
-- `TELEGRAM_BOT_TOKEN` (required): Bot authentication token from @BotFather
-- `TMUX_SESSION_NAME` (optional): Name of tmux session (default: "opencode-bot")
-- `LOG_LEVEL` (optional): Logging verbosity (default: "info")
+- `telegramBotToken` (required): Bot authentication token from @BotFather
+- `logLevel` (optional): Logging verbosity (default: "info")
+- `commands` (required): Array of command configurations
+- `cronTasks` (optional): Array of scheduled task configurations
