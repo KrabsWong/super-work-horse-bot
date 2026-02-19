@@ -91,6 +91,8 @@ export function createCommandHandler(commandName: string): (ctx: TextMessageCont
       userId: ctx.from.id,
       username: ctx.from.username,
       chatId: ctx.chat.id,
+      telegram: ctx.telegram,
+      enableMonitoring: true,
     };
     
     const result = await executeCommand(commandName, args, context);

@@ -2,15 +2,13 @@ import { Cron } from 'croner';
 import type { BotInstance } from '../types';
 import { config } from '../config';
 import { executeInTmux } from '../tmux/session';
+import { startMonitoring, generateStatusFilePath, buildCompletionInstruction } from '../monitor';
 
 interface TodayInHistoryEvent {
   year: string;
   title: string;
 }
 
-/**
- * Fetch today's events from history API
- */
 async function fetchTodayInHistory(): Promise<TodayInHistoryEvent[]> {
   try {
     const response = await fetch(`https://jkapi.com/api/history`);
@@ -40,9 +38,6 @@ async function fetchTodayInHistory(): Promise<TodayInHistoryEvent[]> {
   }
 }
 
-/**
- * Select a positive event from the list
- */
 function selectPositiveEvent(events: TodayInHistoryEvent[]): TodayInHistoryEvent | null {
   const positiveKeywords = ['出生', '成立', '发明', '发现', '成功', '诞生', '建立', '创立', '获奖', '胜利', '突破', '首次', '第一'];
   const negativeKeywords = ['逝世', '去世', '死亡', '灾难', '战争', '失败', '爆炸', '破坏', '屠杀', '起义', '革命', '战役', '希特勒', '纳粹'];
@@ -64,9 +59,6 @@ function selectPositiveEvent(events: TodayInHistoryEvent[]): TodayInHistoryEvent
   return bestPositive ? bestPositive.event : scoredEvents.length > 0 ? scoredEvents[0].event : null;
 }
 
-/**
- * Generate the research prompt for the cron task
- */
 async function generateResearchPrompt(): Promise<string> {
   const today = new Date();
   const dateStr = `${today.getMonth() + 1}月${today.getDate()}日`;
@@ -90,14 +82,13 @@ async function generateResearchPrompt(): Promise<string> {
   return `硅基写手 ${promptContent}`;
 }
 
-/**
- * Build opencode command for cron execution
- */
-function buildCronCommand(commandName: string, prompt: string, dir: string): string {
+function buildCronCommand(commandName: string, prompt: string, dir: string, sessionName: string): { command: string; statusFile: string } {
   const cmdConfig = config.commands[commandName];
   if (!cmdConfig) {
     throw new Error(`Command '${commandName}' is not configured`);
   }
+
+  const statusFile = generateStatusFilePath(sessionName);
 
   let opencodeCmd = 'opencode';
 
@@ -105,7 +96,7 @@ function buildCronCommand(commandName: string, prompt: string, dir: string): str
     opencodeCmd += ` --model="${cmdConfig.model}"`;
   }
 
-  const additionalInstructions = `
+  let additionalInstructions = `
 IMPORTANT INSTRUCTIONS:
 1. This is a RESEARCH task.
 2. **STEP 1**: Read 'openspec/project.md'.
@@ -117,14 +108,16 @@ IMPORTANT INSTRUCTIONS:
 6. **Output**: Start by stating: 'Identifying Intent... Selected Template: [Template Name]'.
 `;
 
+  additionalInstructions += buildCompletionInstruction(statusFile);
+
   opencodeCmd += ` --prompt="${cmdConfig.prompt} ${prompt}${additionalInstructions}"`;
 
-  return `cd ${dir} && ${opencodeCmd}`;
+  return {
+    command: `cd ${dir} && ${opencodeCmd}`,
+    statusFile,
+  };
 }
 
-/**
- * Execute a cron task
- */
 async function executeCronTask(
   taskName: string,
   commandName: string,
@@ -137,7 +130,6 @@ async function executeCronTask(
 
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(`[${timestamp}] Cron task '${taskName}' triggered`);
-  console.log(`[DEBUG] Using chatId: ${chatId} (type: ${typeof chatId})`);
 
   try {
     await bot.telegram.sendMessage(
@@ -148,8 +140,9 @@ async function executeCronTask(
     const prompt = await generateResearchPrompt();
     console.log(`Generated prompt: ${prompt}`);
 
-    const command = buildCronCommand(commandName, prompt, dir);
+    const { command, statusFile } = buildCronCommand(commandName, prompt, dir, sessionName);
     console.log(`Built command: ${command}`);
+    console.log(`Status file: ${statusFile}`);
 
     const success = await executeInTmux(command, sessionName);
 
@@ -159,6 +152,14 @@ async function executeCronTask(
         chatId,
         `✅ 定时任务已开始执行\n\n主题: ${prompt.substring(0, 100)}...\nSession: ${sessionName}\n\n可通过以下命令查看进度:\ntmux attach -t ${sessionName}`
       );
+
+      startMonitoring({
+        sessionName,
+        statusFile,
+        telegram: bot.telegram,
+        chatId,
+        taskName: `定时任务: ${taskName}`,
+      });
     } else {
       console.error(`Cron task '${taskName}' failed to execute`);
       await bot.telegram.sendMessage(
@@ -169,23 +170,19 @@ async function executeCronTask(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error(`Cron task '${taskName}' error:`, errorMessage);
-    console.error(`[DEBUG] Failed to send message to chatId: ${chatId}`);
     try {
       await bot.telegram.sendMessage(
         chatId,
         `❌ 定时任务异常\n\n任务: ${taskName}\n错误: ${errorMessage}`
       );
     } catch (notifyError) {
-      console.error(`[DEBUG] Failed to send error notification:`, notifyError);
+      console.error('Failed to send error notification:', notifyError);
     }
   }
 
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 }
 
-/**
- * Initialize all cron tasks from configuration
- */
 export function initializeCronTasks(bot: BotInstance): Cron[] {
   const scheduledJobs: Cron[] = [];
   const taskNames = Object.keys(config.cronTasks);
@@ -246,9 +243,6 @@ export function initializeCronTasks(bot: BotInstance): Cron[] {
   return scheduledJobs;
 }
 
-/**
- * Stop all scheduled cron jobs
- */
 export function stopCronJobs(jobs: Cron[]): void {
   console.log('Stopping cron jobs...');
   for (const job of jobs) {
