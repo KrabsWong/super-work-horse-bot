@@ -1,0 +1,20 @@
+# VibeCodingBot Configuration
+# Copy this file to config.yaml and fill in your values
+
+telegramBotToken: your_bot_token_here
+logLevel: info
+
+commands:
+  - name: research
+    dir: ~/workspace/research
+    prompt: /openspec:proposal
+    session: research-bot
+    model: opencode/glm-4.7-free
+
+cronTasks:
+  - name: daily-research
+    schedule: "0 9 * * *"
+    command: research
+    chatId: 123456789
+    session: research-cron
+    enabled: true
