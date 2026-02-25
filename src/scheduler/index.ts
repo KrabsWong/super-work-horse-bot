@@ -4,79 +4,122 @@ import { config } from '../config';
 import { executeInTmux } from '../tmux/session';
 import { startMonitoring, generateStatusFilePath, buildCompletionInstruction } from '../monitor';
 
-interface TodayInHistoryEvent {
-  year: string;
-  title: string;
+interface GitHubRepo {
+  name: string;
+  desc: string;
+  stars: number;
+  url: string;
+  lang: string | null;
 }
 
-async function fetchTodayInHistory(): Promise<TodayInHistoryEvent[]> {
+async function fetchGitHubTrendingRepos(): Promise<GitHubRepo[]> {
   try {
-    const response = await fetch(`https://jkapi.com/api/history`);
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.status}`);
-    }
+    const today = new Date();
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const dateStr = weekAgo.toISOString().split('T')[0];
 
-    const text = await response.text();
-
-    const events: TodayInHistoryEvent[] = [];
-    const lines = text.split('\n').filter(line => line.trim());
-
-    for (const line of lines) {
-      const match = line.match(/(\d{3,4})\s+(.+)/);
-      if (match) {
-        events.push({
-          year: match[1],
-          title: match[2].trim(),
-        });
+    const response = await fetch(
+      `https://api.github.com/search/repositories?q=created:>${dateStr}&sort=stars&order=desc&per_page=30`,
+      {
+        headers: {
+          Accept: 'application/vnd.github.v3+json',
+          'User-Agent': 'Telegram-Bot-Cron-Task',
+        },
       }
+    );
+
+    if (!response.ok) {
+      throw new Error(`GitHub API failed: ${response.status}`);
     }
 
-    return events.filter(e => e.title.length > 3).slice(0, 5);
+    const data = (await response.json()) as {
+      items: Array<{
+        full_name: string;
+        description: string | null;
+        stargazers_count: number;
+        html_url: string;
+        language: string | null;
+      }>;
+    };
+
+    return data.items
+      .filter(item => item.stargazers_count >= 50 && item.stargazers_count <= 100000)
+      .slice(0, 15)
+      .map(item => ({
+        name: item.full_name,
+        desc: item.description || '无描述',
+        stars: item.stargazers_count,
+        url: item.html_url,
+        lang: item.language,
+      }));
   } catch (error) {
-    console.error('Failed to fetch today in history:', error);
+    console.error('Failed to fetch GitHub trending repos:', error);
     return [];
   }
 }
 
-function selectPositiveEvent(events: TodayInHistoryEvent[]): TodayInHistoryEvent | null {
-  const positiveKeywords = ['出生', '成立', '发明', '发现', '成功', '诞生', '建立', '创立', '获奖', '胜利', '突破', '首次', '第一'];
-  const negativeKeywords = ['逝世', '去世', '死亡', '灾难', '战争', '失败', '爆炸', '破坏', '屠杀', '起义', '革命', '战役', '希特勒', '纳粹'];
+function selectInterestingRepo(repos: GitHubRepo[]): GitHubRepo | null {
+  if (repos.length === 0) return null;
 
-  const scoredEvents = events.map(event => {
-    let score = 0;
-    for (const keyword of positiveKeywords) {
-      if (event.title.includes(keyword)) score += 2;
+  const interestingKeywords = [
+    'ai', 'llm', 'agent', 'gpt', 'claude', 'copilot', 'assistant',
+    'framework', 'tool', 'cli', 'sdk', 'api', 'platform',
+    'automation', 'bot', 'chatbot', 'assistant',
+    'react', 'vue', 'next', 'typescript', 'rust', 'go',
+    'machine learning', 'deep learning', 'neural',
+  ];
+
+  const scoredRepos = repos.map(repo => {
+    let score = Math.log10(repo.stars + 1) * 2;
+
+    const descLower = repo.desc.toLowerCase();
+    const nameLower = repo.name.toLowerCase();
+
+    for (const keyword of interestingKeywords) {
+      if (descLower.includes(keyword) || nameLower.includes(keyword)) {
+        score += 3;
+      }
     }
-    for (const keyword of negativeKeywords) {
-      if (event.title.includes(keyword)) score -= 3;
+
+    if (repo.lang && ['TypeScript', 'Rust', 'Go', 'Python'].includes(repo.lang)) {
+      score += 2;
     }
-    return { event, score };
+
+    return { repo, score };
   });
 
-  scoredEvents.sort((a, b) => b.score - a.score);
+  scoredRepos.sort((a, b) => b.score - a.score);
 
-  const bestPositive = scoredEvents.find(e => e.score > 0);
-  return bestPositive ? bestPositive.event : scoredEvents.length > 0 ? scoredEvents[0].event : null;
+  const topRepos = scoredRepos.slice(0, 5);
+  const selected = topRepos[Math.floor(Math.random() * topRepos.length)];
+  return selected ? selected.repo : null;
 }
 
 async function generateResearchPrompt(): Promise<string> {
   const today = new Date();
-  const dateStr = `${today.getMonth() + 1}月${today.getDate()}日`;
+  const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
 
-  const events = await fetchTodayInHistory();
-
-  let selectedEvent: TodayInHistoryEvent | null = null;
-
-  if (events.length > 0) {
-    selectedEvent = selectPositiveEvent(events);
-  }
+  const repos = await fetchGitHubTrendingRepos();
+  const selectedRepo = selectInterestingRepo(repos);
 
   let promptContent: string;
 
-  if (selectedEvent) {
-    promptContent = `今天是${dateStr}，历史上的${selectedEvent.year}年的今天发生了：${selectedEvent.title}。请对这个历史事件进行深入研究，分析其背景、影响和启示。`;
+  if (selectedRepo) {
+    promptContent = `今天是${dateStr}，GitHub上本周热门项目发现：${selectedRepo.name}（${selectedRepo.stars}⭐，语言：${selectedRepo.lang || '未知'}）
+
+项目描述：${selectedRepo.desc}
+
+请对这个项目进行深入研究分析：
+1. 项目核心功能和价值主张
+2. 技术架构和创新点分析
+3. 有意思的实现细节或设计模式
+4. 实际应用场景和潜在用例
+5. 类似产品或竞品对比分析
+6. 发展前景和改进建议
+
+项目地址：${selectedRepo.url}`;
   } else {
-    promptContent = `今天是${dateStr}，请搜索互联网上的热门话题或新闻，选择其中一个有意思的事件或话题进行深入研究分析。`;
+    promptContent = `今天是${dateStr}，请搜索GitHub上的热门开源项目，选择一个有意思的项目进行深入研究分析。`;
   }
 
   return `硅基写手 ${promptContent}`;

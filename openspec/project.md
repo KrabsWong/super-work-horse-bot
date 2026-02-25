@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Telegram bot server that enables remote execution of AI coding workflows (via `opencode`) through Telegram chat. Supports scheduled tasks with automatic research topic generation based on "Today in History" events.
+Telegram bot server that enables remote execution of AI coding workflows (via `opencode`) through Telegram chat. Supports scheduled tasks with automatic research topic generation based on GitHub trending repositories.
 
 ## Tech Stack
 
@@ -63,7 +63,7 @@ Telegram bot server that enables remote execution of AI coding workflows (via `o
 - **Whitelisting**: Security pattern where only approved commands are allowed
 - **Cron Tasks**: Scheduled execution using cron expressions
 - **Status File**: Marker file created by opencode to signal task completion
-- **Today in History**: API integration for generating research topics
+- **GitHub Trending**: API integration for generating research topics from popular repositories
 
 ### User Workflow
 
@@ -80,9 +80,9 @@ Telegram bot server that enables remote execution of AI coding workflows (via `o
 
 1. Admin configures cron tasks in `config.yaml`
 2. Scheduler triggers task at configured time
-3. System fetches "Today in History" events from external API
-4. System selects positive/interesting event as research topic
-5. Bot executes opencode with generated topic
+3. System fetches GitHub trending repositories created in the past week
+4. System selects an interesting repository based on relevance scoring
+5. Bot executes opencode with generated research prompt (project analysis, use cases, competitors)
 6. Bot monitors and notifies on completion
 
 ## Important Constraints
