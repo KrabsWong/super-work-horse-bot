@@ -1,6 +1,6 @@
 # VibeCodingBot
 
-A Telegram bot server that receives slash commands and executes server-side AI coding workflows (via `opencode`) within tmux sessions. Supports scheduled tasks and real-time monitoring.
+A Telegram bot server that receives slash commands and executes server-side AI coding workflows (via `opencode` or `claude` CLI) within tmux sessions. Supports scheduled tasks and real-time monitoring.
 
 ## Features
 
@@ -17,7 +17,7 @@ A Telegram bot server that receives slash commands and executes server-side AI c
 
 - **Bun** v1.0.0 or higher
 - **tmux** installed on your server
-- **opencode** CLI tool available in PATH
+- **opencode** or **claude** CLI tool available in PATH
 - A Telegram bot token (get one from [@BotFather](https://t.me/BotFather))
 
 ## Installation
@@ -60,7 +60,7 @@ A Telegram bot server that receives slash commands and executes server-side AI c
        dir: ~/workspace/research
        prompt: /openspec:proposal
        session: research-bot
-       model: opencode/kimi-k2.5-free
+       model: opencode/glm-4.7-free
    
    cronTasks:
      - name: daily-research
@@ -172,9 +172,23 @@ Each command in the `commands` array:
 |-------|----------|---------|-------------|
 | `name` | Yes | - | Command name (used as `/<name>`) |
 | `dir` | Yes | - | Working directory for the command |
-| `prompt` | Yes | - | OpenCode prompt format |
+| `prompt` | Yes | - | Prompt format |
 | `session` | No | `<name>-bot` | tmux session name |
-| `model` | No | - | AI model (e.g., `opencode/kimi-k2.5-free`) |
+| `model` | No | - | AI model (e.g., `opencode/glm-4.7-free`, `claude-sonnet-4-20250514`) |
+| `cli` | No | `{type: 'opencode'}` | CLI tool configuration |
+
+### CLI Configuration
+
+The `cli` field allows you to choose between different AI CLI tools:
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `type` | No | `opencode` | CLI tool type: `opencode` or `claude` |
+| `skipPermissions` | No | `false` | (claude only) Skip permission checks. Use with caution in trusted environments. |
+
+**Supported CLI types:**
+- `opencode` - Default, uses `opencode --model="..." --prompt="..."`
+- `claude` - Uses `claude --model "..." -p "..."` with optional `--dangerously-skip-permissions`
 
 ### Cron Task Configuration
 
@@ -196,17 +210,22 @@ Add to your `config.yaml`:
 
 ```yaml
 commands:
+  # Using opencode (default CLI)
   - name: research
     dir: ~/workspace/research
     prompt: /openspec:proposal
     session: research-bot
-    model: opencode/kimi-k2.5-free
+    model: opencode/glm-4.7-free
   
-  - name: proposal
-    dir: ~/workspace/proposals
-    prompt: /proposal
-    session: proposal-bot
-    model: opencode/claude-sonnet-4.5
+  # Using claude CLI
+  - name: claude-task
+    dir: ~/workspace/claude
+    prompt: "Help me with"
+    session: claude-bot
+    model: claude-sonnet-4-20250514
+    cli:
+      type: claude
+      skipPermissions: true  # Skip permission checks (use with caution)
 ```
 
 Restart the bot:
@@ -214,7 +233,7 @@ Restart the bot:
 bun start
 ```
 
-The `/proposal` command will now be available!
+The `/research` and `/claude-task` commands will now be available!
 
 ## Security
 

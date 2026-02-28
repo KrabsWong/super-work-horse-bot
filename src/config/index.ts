@@ -1,5 +1,10 @@
-import type { Config, CommandConfig, CronTaskConfig } from '../types';
+import type { Config, CommandConfig, CronTaskConfig, CliType } from '../types';
 import yaml from 'js-yaml';
+
+interface RawCliConfig {
+  type: string;
+  skipPermissions?: boolean;
+}
 
 interface RawCommandConfig {
   name: string;
@@ -7,6 +12,7 @@ interface RawCommandConfig {
   prompt: string;
   session?: string;
   model?: string;
+  cli?: RawCliConfig;
 }
 
 interface RawCronTaskConfig {
@@ -25,6 +31,8 @@ interface YamlConfig {
   commands: RawCommandConfig[];
   cronTasks?: RawCronTaskConfig[];
 }
+
+const validCliTypes: CliType[] = ['opencode', 'claude'];
 
 function validateCommandConfig(raw: RawCommandConfig, index: number): CommandConfig | null {
   if (!raw.name) {
@@ -52,11 +60,21 @@ function validateCommandConfig(raw: RawCommandConfig, index: number): CommandCon
     return null;
   }
 
+  // Validate cli.type if provided
+  if (raw.cli?.type && !validCliTypes.includes(raw.cli.type as CliType)) {
+    console.error(`ERROR: Command '${raw.name}' has invalid cli.type '${raw.cli.type}'. Valid types: ${validCliTypes.join(', ')}`);
+    return null;
+  }
+
   return {
     dir: raw.dir,
     prompt: raw.prompt,
     session: raw.session || `${raw.name}-bot`,
     model: raw.model,
+    cli: raw.cli ? { 
+      type: raw.cli.type as CliType,
+      skipPermissions: raw.cli.skipPermissions,
+    } : undefined,
   };
 }
 
@@ -146,7 +164,8 @@ async function loadConfigFromYaml(configPath: string): Promise<Config> {
       const validated = validateCommandConfig(raw, i);
       if (validated) {
         commands[raw.name] = validated;
-        console.log(`Loaded command '${raw.name}': session=${validated.session}`);
+        const cliType = validated.cli?.type ?? 'opencode';
+        console.log(`Loaded command '${raw.name}': session=${validated.session}, cli=${cliType}`);
       }
     }
 

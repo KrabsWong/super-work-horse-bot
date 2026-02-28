@@ -5,11 +5,31 @@ telegramBotToken: your_bot_token_here
 logLevel: info
 
 commands:
+  # Example using opencode (default CLI)
   - name: research
     dir: ~/workspace/research
     prompt: /openspec:proposal
     session: research-bot
     model: opencode/glm-4.7-free
+    # cli:  # Optional, defaults to opencode
+    #   type: opencode
+
+  # Example using claude CLI
+  - name: claude-task
+    dir: ~/workspace/claude
+    prompt: "Help me with"
+    session: claude-bot
+    model: claude-sonnet-4-20250514
+    cli:
+      type: claude
+      skipPermissions: true  # Skip permission checks (use with caution)
+  - name: claude-task
+    dir: ~/workspace/claude
+    prompt: "Help me with"
+    session: claude-bot
+    model: claude-sonnet-4-20250514
+    cli:
+      type: claude
 
 cronTasks:
   - name: daily-research

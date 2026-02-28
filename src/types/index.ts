@@ -1,6 +1,21 @@
 import type { Context, Telegraf, Telegram } from 'telegraf';
 
 /**
+ * CLI tool type
+ */
+export type CliType = 'opencode' | 'claude';
+
+/**
+ * CLI-specific configuration options
+ */
+export interface CliConfig {
+  /** CLI tool type: 'opencode' (default) or 'claude' */
+  type: CliType;
+  /** Skip permission checks (claude only). Use with caution in trusted environments. */
+  skipPermissions?: boolean;
+}
+
+/**
  * Configuration for a single command
  */
 export interface CommandConfig {
@@ -8,6 +23,8 @@ export interface CommandConfig {
   prompt: string;
   session: string;
   model?: string;
+  /** CLI tool configuration. Defaults to opencode if not specified */
+  cli?: CliConfig;
 }
 
 /**

@@ -1,6 +1,7 @@
 import { executeInTmux } from '../tmux/session';
 import { config } from '../config';
 import { startMonitoring, generateStatusFilePath, buildCompletionInstruction } from '../monitor';
+import { buildCliCommand, getCliType } from '../cli/builder';
 import type { ExecutionResult, ValidationResult, ExecutionContext } from '../types';
 
 /**
@@ -30,7 +31,7 @@ interface BuiltCommand {
 }
 
 /**
- * Build opencode command with directory change and proper prompt format
+ * Build CLI command with directory change and proper prompt format
  */
 function buildCommandWithDirectory(commandName: string, args: string, enableMonitoring: boolean): BuiltCommand {
   const sanitized = sanitizeInput(args);
@@ -45,12 +46,6 @@ function buildCommandWithDirectory(commandName: string, args: string, enableMoni
   
   if (!cmdConfig.dir || !cmdConfig.prompt) {
     throw new Error(`Command '${commandName}' is missing DIR or PROMPT configuration`);
-  }
-  
-  let opencodeCmd = 'opencode';
-  
-  if (cmdConfig.model) {
-    opencodeCmd += ` --model="${cmdConfig.model}"`;
   }
   
   let additionalInstructions = `
@@ -72,10 +67,11 @@ IMPORTANT INSTRUCTIONS:
     additionalInstructions += buildCompletionInstruction(statusFile);
   }
   
-  opencodeCmd += ` --prompt="${cmdConfig.prompt} ${sanitized}${additionalInstructions}"`;
+  const fullPrompt = `${cmdConfig.prompt} ${sanitized}${additionalInstructions}`;
+  const cliCmd = buildCliCommand(cmdConfig.cli, cmdConfig.model, fullPrompt);
   
   return {
-    command: `cd ${cmdConfig.dir} && ${opencodeCmd}`,
+    command: `cd ${cmdConfig.dir} && ${cliCmd}`,
     statusFile,
   };
 }
@@ -144,6 +140,8 @@ export async function executeCommand(
     console.log(`Built command: ${builtCommand.command}`);
     
     const cmdConfig = config.commands[commandName];
+    const cliType = getCliType(cmdConfig.cli);
+    console.log(`CLI type: ${cliType}`);
     if (cmdConfig.model) {
       console.log(`Using model: ${cmdConfig.model}`);
     }
