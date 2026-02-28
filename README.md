@@ -58,7 +58,7 @@ A Telegram bot server that receives slash commands and executes server-side AI c
    commands:
      - name: research
        dir: ~/workspace/research
-       prompt: /openspec:proposal
+      prompt: /opsx:propose
        session: research-bot
        model: opencode/glm-4.7-free
    
@@ -110,7 +110,7 @@ In Telegram, send:
 
  This will execute on your server:
   ```bash
-  cd ~/workspace/research && opencode --model="opencode/glm-4.7-free" --prompt="/openspec:proposal 帮我生成一份研究报告，介绍新能源汽车领域涉及到哪些技术"
+  cd ~/workspace/research && opencode --model="opencode/glm-4.7-free" --prompt="/opsx:propose 帮我生成一份研究报告，介绍新能源汽车领域涉及到哪些技术"
   ```
 
 The command runs in a dedicated tmux session named `research-bot` (configurable via `COMMAND_RESEARCH_SESSION`).
@@ -213,7 +213,7 @@ commands:
   # Using opencode (default CLI)
   - name: research
     dir: ~/workspace/research
-    prompt: /openspec:proposal
+    prompt: /opsx:propose
     session: research-bot
     model: opencode/glm-4.7-free
   

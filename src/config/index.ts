@@ -233,7 +233,7 @@ export function validateConfig(): void {
     console.error('commands:');
     console.error('  - name: research');
     console.error('    dir: ~/workspace/research');
-    console.error('    prompt: /openspec:proposal');
+    console.error('    prompt: /opsx:propose');
     console.error('    session: research-bot');
     console.error('    model: opencode/glm-4.7-free');
     process.exit(1);

@@ -8,7 +8,7 @@ commands:
   # Example using opencode (default CLI)
   - name: research
     dir: ~/workspace/research
-    prompt: /openspec:proposal
+    prompt: /opsx:propose
     session: research-bot
     model: opencode/glm-4.7-free
     # cli:  # Optional, defaults to opencode
