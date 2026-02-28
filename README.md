@@ -188,7 +188,7 @@ The `cli` field allows you to choose between different AI CLI tools:
 
 **Supported CLI types:**
 - `opencode` - Default, uses `opencode --model="..." --prompt="..."`
-- `claude` - Uses `claude --model "..." -p "..."` with optional `--dangerously-skip-permissions`
+- `claude` - Uses `claude --model "..." "..."` with optional `--dangerously-skip-permissions`
 
 ### Cron Task Configuration
 

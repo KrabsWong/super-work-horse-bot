@@ -37,9 +37,9 @@ function buildClaudeCommand(
     cmd += ' --dangerously-skip-permissions';
   }
   
-  // Claude uses -p for print mode (non-interactive) and prompt as positional arg
-  cmd += ` -p "${prompt}"`;
-  
+  // Prompt as positional argument
+  cmd += ` "${prompt}"`;
+
   return cmd;
 }
 
