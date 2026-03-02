@@ -15,7 +15,6 @@ import {
 import { initializeCronTasks, stopCronJobs } from './scheduler';
 import { taskManager } from './task-manager';
 import { stopAllMonitors } from './monitor';
-import { initBinaryPaths } from './utils/binaries';
 import type { Cron } from 'croner';
 import type { Task, PRInfo } from './types';
 
@@ -23,8 +22,6 @@ async function main(): Promise<void> {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('VibeCodingBot - Telegram Bot Server');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
-  initBinaryPaths();
 
   console.log('Loading configuration...');
   await initializeConfig();

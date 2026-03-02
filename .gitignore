@@ -9,6 +9,9 @@ bun.lock
 .env.*.local
 config.yaml
 
+# Build output
+dist/
+
 # Logs
 logs/
 *.log
