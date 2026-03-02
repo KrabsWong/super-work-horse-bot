@@ -16,7 +16,6 @@ commands:
     model: opencode/glm-4.7-free
     # 新增配置项
     maxConcurrent: 3        # 最大并发任务数，默认 3
-    prMergeStrategy: manual # PR 合并策略: manual | auto
 
 cronTasks:
   - name: daily-research

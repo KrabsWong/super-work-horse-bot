@@ -10,13 +10,12 @@ import {
   handleUnknown,
   handleStatus,
   handleCancel,
-  setupPRCallbacks,
 } from './bot/handlers';
 import { initializeCronTasks, stopCronJobs } from './scheduler';
 import { taskManager } from './task-manager';
 import { stopAllMonitors } from './monitor';
 import type { Cron } from 'croner';
-import type { Task, PRInfo } from './types';
+import type { Task } from './types';
 
 async function main(): Promise<void> {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -46,18 +45,17 @@ async function main(): Promise<void> {
 
   taskManager.setTelegramClient(bot.telegram);
   
-  taskManager.setTaskCompletionCallback(async (task: Task, prInfo: PRInfo | null) => {
-    if (task.chatId && prInfo) {
+  taskManager.setTaskCompletionCallback(async (task: Task) => {
+    if (task.chatId) {
       try {
         await bot.telegram.sendMessage(
           task.chatId,
           `✅ 任务完成！\n\n` +
           `任务 ID: ${task.id}\n` +
-          `PR: ${prInfo.url}\n` +
-          `分支: ${prInfo.branchName}`
+          `分支: ${task.branchName}`
         );
       } catch (error) {
-        console.error('[TaskManager] Failed to send PR notification:', error);
+        console.error('[TaskManager] Failed to send completion notification:', error);
       }
     }
   });
@@ -76,8 +74,6 @@ async function main(): Promise<void> {
     bot.command(commandName, handler);
     console.log(`Registered command handler: /${commandName}`);
   }
-
-  setupPRCallbacks(bot);
 
   bot.on('message', handleUnknown);
 

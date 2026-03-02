@@ -1,12 +1,9 @@
 import type { Context, NarrowedContext } from 'telegraf';
 import type { Update, Message } from 'telegraf/types';
-import { Markup } from 'telegraf';
 import { executeCommand } from '../commands/executor';
 import { config } from '../config';
 import { sendCtrlC } from '../tmux/session';
 import { taskManager } from '../task-manager';
-import { PRMergeStrategy } from '../types';
-import type { Task, PRInfo } from '../types';
 
 type TextMessageContext = NarrowedContext<Context<Update>, Update.MessageUpdate<Message.TextMessage>>;
 
@@ -39,8 +36,7 @@ export async function handleHelp(ctx: TextMessageContext): Promise<void> {
     commandDetails += `  Working directory: ${cmdConfig.dir}\n`;
     commandDetails += `  Prompt format: ${cmdConfig.prompt}\n`;
     commandDetails += `  Session: ${cmdConfig.session}\n`;
-    commandDetails += `  Max concurrent: ${cmdConfig.maxConcurrent}\n`;
-    commandDetails += `  PR merge strategy: ${cmdConfig.prMergeStrategy}\n\n`;
+    commandDetails += `  Max concurrent: ${cmdConfig.maxConcurrent}\n\n`;
   }
   
   await ctx.reply(
@@ -231,108 +227,4 @@ export async function handleUnknown(ctx: Context<Update>): Promise<void> {
     'Unknown command.\n\n' +
     'Use /help to see available commands.'
   );
-}
-
-export async function sendPRNotification(
-  ctx: Context,
-  chatId: number,
-  task: Task,
-  prInfo: PRInfo
-): Promise<void> {
-  const cmdConfig = config.commands[task.commandName];
-  
-  if (prInfo.state === 'merged') {
-    await ctx.telegram.sendMessage(
-      chatId,
-      `✅ 任务完成并已自动合并！\n\n` +
-      `任务 ID: ${task.id}\n` +
-      `PR: ${prInfo.url} (已合并)\n` +
-      `分支: ${prInfo.branchName}`
-    );
-    return;
-  }
-  
-  const message = 
-    `✅ 任务完成！\n\n` +
-    `任务 ID: ${task.id}\n` +
-    `PR: ${prInfo.url}\n` +
-    `分支: ${prInfo.branchName}\n\n` +
-    `请选择操作:`;
-  
-  if (cmdConfig.prMergeStrategy === PRMergeStrategy.MANUAL) {
-    await ctx.telegram.sendMessage(
-      chatId,
-      message,
-      Markup.inlineKeyboard([
-        [
-          Markup.button.callback('✅ 合并 PR', `merge_pr:${prInfo.number}:${task.commandName}`),
-          Markup.button.callback('❌ 关闭 PR', `close_pr:${prInfo.number}:${task.commandName}`),
-        ],
-        [
-          Markup.button.url('🔗 查看详情', prInfo.url),
-        ],
-      ])
-    );
-  } else {
-    await ctx.telegram.sendMessage(
-      chatId,
-      message + '\n\nPR 已自动合并。'
-    );
-  }
-}
-
-export function setupPRCallbacks(bot: import('telegraf').Telegraf): void {
-  bot.action(/merge_pr:(\d+):(.+)/, async (ctx) => {
-    const prNumber = parseInt(ctx.match[1], 10);
-    const commandName = ctx.match[2];
-    
-    await ctx.answerCbQuery('正在合并 PR...');
-    
-    const cmdConfig = config.commands[commandName];
-    if (!cmdConfig) {
-      await ctx.editMessageText('❌ 命令配置不存在');
-      return;
-    }
-    
-    const { PRManager } = await import('../task-manager/pr-manager');
-    const prManager = new PRManager(cmdConfig.dir);
-    
-    const success = await prManager.mergePR(prNumber);
-    
-    if (success) {
-      await ctx.editMessageText(
-        `✅ PR #${prNumber} 已合并\n\n` +
-        `分支已自动删除。`
-      );
-    } else {
-      await ctx.editMessageText(`❌ 合并 PR #${prNumber} 失败`);
-    }
-  });
-  
-  bot.action(/close_pr:(\d+):(.+)/, async (ctx) => {
-    const prNumber = parseInt(ctx.match[1], 10);
-    const commandName = ctx.match[2];
-    
-    await ctx.answerCbQuery('正在关闭 PR...');
-    
-    const cmdConfig = config.commands[commandName];
-    if (!cmdConfig) {
-      await ctx.editMessageText('❌ 命令配置不存在');
-      return;
-    }
-    
-    const { PRManager } = await import('../task-manager/pr-manager');
-    const prManager = new PRManager(cmdConfig.dir);
-    
-    const success = await prManager.closePR(prNumber);
-    
-    if (success) {
-      await ctx.editMessageText(
-        `✅ PR #${prNumber} 已关闭\n\n` +
-        `如需删除分支，请手动操作。`
-      );
-    } else {
-      await ctx.editMessageText(`❌ 关闭 PR #${prNumber} 失败`);
-    }
-  });
 }

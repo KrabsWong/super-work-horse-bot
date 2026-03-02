@@ -2,11 +2,9 @@ export {
   type TaskId,
   type Task,
   type Slot,
-  type PRInfo,
   type TaskManagerConfig,
   type TaskResult,
   TaskStatus,
-  PRMergeStrategy,
 } from '../types';
 
 export interface TaskQueueItem {

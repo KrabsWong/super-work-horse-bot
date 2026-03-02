@@ -1,8 +1,7 @@
-import type { TaskId, Task, TaskResult, PRInfo, ExecutionContext, TelegramClient } from '../types';
-import { TaskStatus, PRMergeStrategy } from '../types';
+import type { TaskId, Task, TaskResult, ExecutionContext, TelegramClient } from '../types';
+import { TaskStatus } from '../types';
 import { SlotManager } from './slot-manager';
 import { TaskQueue } from './queue';
-import { PRManager } from './pr-manager';
 import type { TaskQueueItem } from './types';
 import { getCurrentBranch } from '../git/sync';
 import { createWorktree, removeWorktree } from '../git/worktree';
@@ -24,13 +23,12 @@ function generateTaskId(): TaskId {
   return `task-${year}${month}${day}_${hour}${minute}${second}-${random}`;
 }
 
-export type TaskCompletionCallback = (task: Task, prInfo: PRInfo | null) => Promise<void>;
+export type TaskCompletionCallback = (task: Task) => Promise<void>;
 
 export class TaskManager {
   private slotManagers: Map<string, SlotManager> = new Map();
   private taskQueues: Map<string, TaskQueue> = new Map();
   private tasks: Map<TaskId, Task> = new Map();
-  private prManagers: Map<string, PRManager> = new Map();
   private onTaskCompletion: TaskCompletionCallback | null = null;
   private _telegramClient: TelegramClient | null = null;
 
@@ -50,8 +48,7 @@ export class TaskManager {
     for (const [commandName, cmdConfig] of Object.entries(config.commands)) {
       this.slotManagers.set(commandName, new SlotManager(cmdConfig.maxConcurrent));
       this.taskQueues.set(commandName, new TaskQueue());
-      this.prManagers.set(commandName, new PRManager(cmdConfig.dir));
-      console.log(`[TaskManager] Initialized for command '${commandName}': maxConcurrent=${cmdConfig.maxConcurrent}, prMergeStrategy=${cmdConfig.prMergeStrategy}`);
+      console.log(`[TaskManager] Initialized for command '${commandName}': maxConcurrent=${cmdConfig.maxConcurrent}`);
     }
   }
 
@@ -203,12 +200,9 @@ IMPORTANT INSTRUCTIONS:
 
     const slotManager = this.slotManagers.get(task.commandName)!;
     const queue = this.taskQueues.get(task.commandName)!;
-    const prManager = this.prManagers.get(task.commandName)!;
 
     task.status = TaskStatus.COMPLETED;
     task.completedAt = Date.now();
-
-    let prInfo: PRInfo | null = null;
 
     try {
       const workDir = task.worktreePath || cmdConfig.dir;
@@ -216,28 +210,8 @@ IMPORTANT INSTRUCTIONS:
       
       const currentBranch = await getCurrentBranch(workDir);
       console.log(`[TaskManager] Current branch: ${currentBranch}, expected: ${task.branchName}`);
-      
-      if (currentBranch === task.branchName) {
-        console.log(`[TaskManager] Creating PR for task ${taskId}...`);
-        prInfo = await prManager.createPR(
-          taskId,
-          `Task: ${task.args.substring(0, 50)}${task.args.length > 50 ? '...' : ''}`,
-          `Task ID: ${taskId}\nCommand: /${task.commandName}\nArgs: ${task.args}\nExecuted by: ${task.username || 'unknown'}`,
-          workDir
-        );
-        console.log(`[TaskManager] PR created, prInfo: ${JSON.stringify(prInfo)}`);
-
-        if (prInfo && cmdConfig.prMergeStrategy === PRMergeStrategy.AUTO) {
-          const merged = await prManager.mergePR(prInfo.number);
-          if (merged) {
-            prInfo.state = 'merged';
-          }
-        }
-      } else {
-        console.log(`[TaskManager] Skipping PR creation: branch mismatch (current: ${currentBranch}, expected: ${task.branchName})`);
-      }
     } catch (error) {
-      console.error(`[TaskManager] Failed to create PR for task ${taskId}:`, error);
+      console.error(`[TaskManager] Error checking branch for task ${taskId}:`, error);
     }
 
     if (task.worktreePath) {
@@ -246,9 +220,9 @@ IMPORTANT INSTRUCTIONS:
 
     slotManager.releaseSlot(taskId);
 
-if (this.onTaskCompletion) {
-      console.log(`[TaskManager] Calling onTaskCompletion callback, prInfo: ${JSON.stringify(prInfo)}`);
-      await this.onTaskCompletion(task, prInfo);
+    if (this.onTaskCompletion) {
+      console.log(`[TaskManager] Calling onTaskCompletion callback`);
+      await this.onTaskCompletion(task);
     } else {
       console.log(`[TaskManager] No onTaskCompletion callback set`);
     }

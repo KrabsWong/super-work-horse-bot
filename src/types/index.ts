@@ -27,8 +27,6 @@ export interface CommandConfig {
   cli?: CliConfig;
   /** Maximum concurrent tasks for this command. Defaults to 3 */
   maxConcurrent: number;
-  /** PR merge strategy. Defaults to manual */
-  prMergeStrategy: PRMergeStrategy;
 }
 
 /**
@@ -140,16 +138,6 @@ export enum TaskStatus {
 }
 
 /**
- * PR merge strategy enumeration
- */
-export enum PRMergeStrategy {
-  /** PR requires manual user action to merge */
-  MANUAL = 'manual',
-  /** PR is automatically merged after creation */
-  AUTO = 'auto',
-}
-
-/**
  * Task interface
  */
 export interface Task {
@@ -185,24 +173,6 @@ export interface Task {
   chatId?: number;
   /** Error message if failed */
   error?: string;
-  /** PR information if created */
-  prInfo?: PRInfo;
-}
-
-/**
- * PR information interface
- */
-export interface PRInfo {
-  /** PR number */
-  number: number;
-  /** PR URL */
-  url: string;
-  /** PR title */
-  title: string;
-  /** PR state: open, merged, closed */
-  state: 'open' | 'merged' | 'closed';
-  /** Branch name */
-  branchName: string;
 }
 
 /**
@@ -227,8 +197,6 @@ export interface Slot {
 export interface TaskManagerConfig {
   /** Maximum concurrent tasks per command */
   maxConcurrent: number;
-  /** PR merge strategy */
-  prMergeStrategy: PRMergeStrategy;
 }
 
 /**

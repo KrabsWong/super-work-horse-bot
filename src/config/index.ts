@@ -1,8 +1,6 @@
 import type { Config, CommandConfig, CronTaskConfig, CliType } from '../types';
-import { PRMergeStrategy } from '../types';
 
 const DEFAULT_MAX_CONCURRENT = 3;
-const DEFAULT_PR_MERGE_STRATEGY = PRMergeStrategy.MANUAL;
 import yaml from 'js-yaml';
 
 interface RawCliConfig {
@@ -18,7 +16,6 @@ interface RawCommandConfig {
   model?: string;
   cli?: RawCliConfig;
   maxConcurrent?: number;
-  prMergeStrategy?: string;
 }
 
 interface RawCronTaskConfig {
@@ -40,7 +37,6 @@ interface YamlConfig {
 }
 
 const validCliTypes: CliType[] = ['opencode', 'claude'];
-const validPrMergeStrategies = [PRMergeStrategy.MANUAL, PRMergeStrategy.AUTO];
 
 function validateCommandConfig(raw: RawCommandConfig, index: number): CommandConfig | null {
   if (!raw.name) {
@@ -73,11 +69,6 @@ function validateCommandConfig(raw: RawCommandConfig, index: number): CommandCon
     return null;
   }
 
-  if (raw.prMergeStrategy && !validPrMergeStrategies.includes(raw.prMergeStrategy as PRMergeStrategy)) {
-    console.error(`ERROR: Command '${raw.name}' has invalid prMergeStrategy '${raw.prMergeStrategy}'. Valid values: ${validPrMergeStrategies.join(', ')}`);
-    return null;
-  }
-
   const maxConcurrent = raw.maxConcurrent ?? DEFAULT_MAX_CONCURRENT;
   if (maxConcurrent < 1) {
     console.error(`ERROR: Command '${raw.name}' has invalid maxConcurrent '${maxConcurrent}'. Must be >= 1`);
@@ -94,7 +85,6 @@ function validateCommandConfig(raw: RawCommandConfig, index: number): CommandCon
       skipPermissions: raw.cli.skipPermissions,
     } : undefined,
     maxConcurrent,
-    prMergeStrategy: (raw.prMergeStrategy as PRMergeStrategy) ?? DEFAULT_PR_MERGE_STRATEGY,
   };
 }
 
