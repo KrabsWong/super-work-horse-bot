@@ -4,37 +4,23 @@
 telegramBotToken: your_bot_token_here
 logLevel: info
 
+# 可选：worktree 存放目录
+# 不设置则使用仓库的父目录
+worktreeBaseDir: ~/Personal/worktrees
+
 commands:
-  # Example using opencode (default CLI)
   - name: research
     dir: ~/workspace/research
     prompt: /opsx:propose
     session: research-bot
     model: opencode/glm-4.7-free
-    # cli:  # Optional, defaults to opencode
-    #   type: opencode
-
-  # Example using claude CLI
-  - name: claude-task
-    dir: ~/workspace/claude
-    prompt: "Help me with"
-    session: claude-bot
-    model: claude-sonnet-4-20250514
-    cli:
-      type: claude
-      skipPermissions: true  # Skip permission checks (use with caution)
-  - name: claude-task
-    dir: ~/workspace/claude
-    prompt: "Help me with"
-    session: claude-bot
-    model: claude-sonnet-4-20250514
-    cli:
-      type: claude
+    # 新增配置项
+    maxConcurrent: 3        # 最大并发任务数，默认 3
+    prMergeStrategy: manual # PR 合并策略: manual | auto
 
 cronTasks:
   - name: daily-research
     schedule: "0 9 * * *"
     command: research
     chatId: 123456789
-    session: research-cron
     enabled: true

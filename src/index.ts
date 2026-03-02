@@ -8,28 +8,31 @@ import {
   handleFinish,
   createCommandHandler,
   handleUnknown,
+  handleStatus,
+  handleCancel,
+  setupPRCallbacks,
 } from './bot/handlers';
 import { initializeCronTasks, stopCronJobs } from './scheduler';
+import { taskManager } from './task-manager';
+import { stopAllMonitors } from './monitor';
+import { initBinaryPaths } from './utils/binaries';
 import type { Cron } from 'croner';
+import type { Task, PRInfo } from './types';
 
-/**
- * Initialize and start the Telegram bot
- */
 async function main(): Promise<void> {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('VibeCodingBot - Telegram Bot Server');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-  // Load configuration
+  initBinaryPaths();
+
   console.log('Loading configuration...');
   await initializeConfig();
 
-  // Validate configuration
   console.log('Validating configuration...');
   validateConfig();
   console.log('Configuration is valid');
 
-  // Check tmux availability
   console.log('Checking tmux availability...');
   const tmuxAvailable = await checkTmuxAvailability();
   if (!tmuxAvailable) {
@@ -37,19 +40,39 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Initialize bot
+  console.log('Initializing TaskManager...');
+  taskManager.initialize();
+  console.log('TaskManager initialized');
+
   console.log('Initializing Telegram bot...');
   const bot = new Telegraf(config.telegramBotToken);
 
-  // Register middleware
+  taskManager.setTelegramClient(bot.telegram);
+  
+  taskManager.setTaskCompletionCallback(async (task: Task, prInfo: PRInfo | null) => {
+    if (task.chatId && prInfo) {
+      try {
+        await bot.telegram.sendMessage(
+          task.chatId,
+          `✅ 任务完成！\n\n` +
+          `任务 ID: ${task.id}\n` +
+          `PR: ${prInfo.url}\n` +
+          `分支: ${prInfo.branchName}`
+        );
+      } catch (error) {
+        console.error('[TaskManager] Failed to send PR notification:', error);
+      }
+    }
+  });
+
   bot.use(loggingMiddleware());
 
-  // Register static command handlers
   bot.command('start', handleStart);
   bot.command('help', handleHelp);
   bot.command('finish', handleFinish);
+  bot.command('status', handleStatus);
+  bot.command('cancel', handleCancel);
 
-  // Dynamically register command handlers from config
   const commandNames = Object.keys(config.commands);
   for (const commandName of commandNames) {
     const handler = createCommandHandler(commandName);
@@ -57,13 +80,12 @@ async function main(): Promise<void> {
     console.log(`Registered command handler: /${commandName}`);
   }
 
-  // Handle unknown commands
+  setupPRCallbacks(bot);
+
   bot.on('message', handleUnknown);
 
-  // Register error handler
   bot.catch(errorHandlingMiddleware());
 
-  // Initialize cron tasks
   let cronJobs: Cron[] = [];
   try {
     cronJobs = initializeCronTasks(bot);
@@ -71,7 +93,6 @@ async function main(): Promise<void> {
     console.error('Failed to initialize cron tasks:', error);
   }
 
-  // Start bot with long-polling
   console.log('Starting bot with long-polling...');
   console.log(`Configured commands: ${commandNames.join(', ')}`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -88,11 +109,12 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Enable graceful stop
   process.once('SIGINT', () => {
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('Received SIGINT, stopping bot...');
     stopCronJobs(cronJobs);
+    stopAllMonitors();
+    taskManager.cleanup();
     bot.stop('SIGINT');
   });
 
@@ -100,11 +122,12 @@ async function main(): Promise<void> {
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('Received SIGTERM, stopping bot...');
     stopCronJobs(cronJobs);
+    stopAllMonitors();
+    taskManager.cleanup();
     bot.stop('SIGTERM');
   });
 }
 
-// Run the bot
 main().catch((error: unknown) => {
   console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.error('Fatal error:', error);

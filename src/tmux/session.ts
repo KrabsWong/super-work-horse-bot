@@ -266,3 +266,18 @@ export async function killOpencodeInSession(sessionName: string): Promise<number
     return 0;
   }
 }
+
+export async function killSession(sessionName: string): Promise<boolean> {
+  if (!sessionName) {
+    return false;
+  }
+
+  const { exitCode } = await execShellCommand(`tmux kill-session -t ${sessionName} 2>/dev/null || true`);
+
+  if (exitCode === 0) {
+    console.log(`Killed tmux session: ${sessionName}`);
+    return true;
+  }
+
+  return false;
+}

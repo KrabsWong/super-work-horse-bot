@@ -1,4 +1,8 @@
 import type { Config, CommandConfig, CronTaskConfig, CliType } from '../types';
+import { PRMergeStrategy } from '../types';
+
+const DEFAULT_MAX_CONCURRENT = 3;
+const DEFAULT_PR_MERGE_STRATEGY = PRMergeStrategy.MANUAL;
 import yaml from 'js-yaml';
 
 interface RawCliConfig {
@@ -13,6 +17,8 @@ interface RawCommandConfig {
   session?: string;
   model?: string;
   cli?: RawCliConfig;
+  maxConcurrent?: number;
+  prMergeStrategy?: string;
 }
 
 interface RawCronTaskConfig {
@@ -28,11 +34,13 @@ interface RawCronTaskConfig {
 interface YamlConfig {
   telegramBotToken: string;
   logLevel?: string;
+  worktreeBaseDir?: string;
   commands: RawCommandConfig[];
   cronTasks?: RawCronTaskConfig[];
 }
 
 const validCliTypes: CliType[] = ['opencode', 'claude'];
+const validPrMergeStrategies = [PRMergeStrategy.MANUAL, PRMergeStrategy.AUTO];
 
 function validateCommandConfig(raw: RawCommandConfig, index: number): CommandConfig | null {
   if (!raw.name) {
@@ -60,9 +68,19 @@ function validateCommandConfig(raw: RawCommandConfig, index: number): CommandCon
     return null;
   }
 
-  // Validate cli.type if provided
   if (raw.cli?.type && !validCliTypes.includes(raw.cli.type as CliType)) {
     console.error(`ERROR: Command '${raw.name}' has invalid cli.type '${raw.cli.type}'. Valid types: ${validCliTypes.join(', ')}`);
+    return null;
+  }
+
+  if (raw.prMergeStrategy && !validPrMergeStrategies.includes(raw.prMergeStrategy as PRMergeStrategy)) {
+    console.error(`ERROR: Command '${raw.name}' has invalid prMergeStrategy '${raw.prMergeStrategy}'. Valid values: ${validPrMergeStrategies.join(', ')}`);
+    return null;
+  }
+
+  const maxConcurrent = raw.maxConcurrent ?? DEFAULT_MAX_CONCURRENT;
+  if (maxConcurrent < 1) {
+    console.error(`ERROR: Command '${raw.name}' has invalid maxConcurrent '${maxConcurrent}'. Must be >= 1`);
     return null;
   }
 
@@ -75,6 +93,8 @@ function validateCommandConfig(raw: RawCommandConfig, index: number): CommandCon
       type: raw.cli.type as CliType,
       skipPermissions: raw.cli.skipPermissions,
     } : undefined,
+    maxConcurrent,
+    prMergeStrategy: (raw.prMergeStrategy as PRMergeStrategy) ?? DEFAULT_PR_MERGE_STRATEGY,
   };
 }
 
@@ -189,6 +209,7 @@ async function loadConfigFromYaml(configPath: string): Promise<Config> {
     return {
       telegramBotToken: parsed.telegramBotToken,
       logLevel: parsed.logLevel || 'info',
+      worktreeBaseDir: parsed.worktreeBaseDir,
       commands,
       cronTasks,
     };

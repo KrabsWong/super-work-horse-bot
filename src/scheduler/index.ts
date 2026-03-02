@@ -4,6 +4,12 @@ import { config } from '../config';
 import { executeInTmux } from '../tmux/session';
 import { startMonitoring, generateStatusFilePath, buildCompletionInstruction } from '../monitor';
 
+function generateCronTaskId(): string {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 8);
+  return `cron-${timestamp}-${random}`;
+}
+
 interface GitHubRepo {
   name: string;
   desc: string;
@@ -196,12 +202,15 @@ async function executeCronTask(
         `✅ 定时任务已开始执行\n\n主题: ${prompt.substring(0, 100)}...\nSession: ${sessionName}\n\n可通过以下命令查看进度:\ntmux attach -t ${sessionName}`
       );
 
+      const cronTaskId = generateCronTaskId();
       startMonitoring({
+        taskId: cronTaskId,
         sessionName,
         statusFile,
         telegram: bot.telegram,
         chatId,
         taskName: `定时任务: ${taskName}`,
+        branchName: `cron-${sessionName}`,
       });
     } else {
       console.error(`Cron task '${taskName}' failed to execute`);

@@ -1,12 +1,8 @@
-import { executeInTmux } from '../tmux/session';
 import { config } from '../config';
-import { startMonitoring, generateStatusFilePath, buildCompletionInstruction } from '../monitor';
-import { buildCliCommand, getCliType } from '../cli/builder';
-import type { ExecutionResult, ValidationResult, ExecutionContext } from '../types';
+import { startMonitoring } from '../monitor';
+import type { ExecutionResult, ValidationResult, ExecutionContext, TaskResult } from '../types';
+import { taskManager } from '../task-manager';
 
-/**
- * Sanitize user input to prevent command injection
- */
 export function sanitizeInput(input: string): string {
   if (!input || typeof input !== 'string') {
     return '';
@@ -25,60 +21,6 @@ export function sanitizeInput(input: string): string {
   return sanitized;
 }
 
-interface BuiltCommand {
-  command: string;
-  statusFile: string | null;
-}
-
-/**
- * Build CLI command with directory change and proper prompt format
- */
-function buildCommandWithDirectory(commandName: string, args: string, enableMonitoring: boolean): BuiltCommand {
-  const sanitized = sanitizeInput(args);
-  if (!sanitized) {
-    throw new Error('Prompt cannot be empty');
-  }
-  
-  const cmdConfig = config.commands[commandName];
-  if (!cmdConfig) {
-    throw new Error(`Command '${commandName}' is not configured`);
-  }
-  
-  if (!cmdConfig.dir || !cmdConfig.prompt) {
-    throw new Error(`Command '${commandName}' is missing DIR or PROMPT configuration`);
-  }
-  
-  let additionalInstructions = `
-IMPORTANT INSTRUCTIONS:
-1. This is a RESEARCH task.
-2. **STEP 1**: Read 'openspec/project.md'.
-3. **STEP 2 (Routing)**: Based on my request, CHOOSE the most appropriate template from the Template Selection Strategy section.
-   - If I asked for features/pricing -> Use 'product-requirement-standard.md'
-   - If I asked for feasibility/integration -> 'Use tech-feasibility-standard.md'
-4. **Action**: Create the directory and generated files strictly following the chosen template's structure.
-5. **Language**: Report content in CHINESE (中文).
-6. **Output**: Start by stating: 'Identifying Intent... Selected Template: [Template Name]'.
-`;
-
-  let statusFile: string | null = null;
-  
-  if (enableMonitoring) {
-    statusFile = generateStatusFilePath(cmdConfig.session);
-    additionalInstructions += buildCompletionInstruction(statusFile);
-  }
-  
-  const fullPrompt = `${cmdConfig.prompt} ${sanitized}${additionalInstructions}`;
-  const cliCmd = buildCliCommand(cmdConfig.cli, cmdConfig.model, fullPrompt);
-  
-  return {
-    command: `cd ${cmdConfig.dir} && ${cliCmd}`,
-    statusFile,
-  };
-}
-
-/**
- * Validate command input
- */
 export function validateCommand(commandName: string, args: string): ValidationResult {
   const availableCommands = Object.keys(config.commands);
   if (!availableCommands.includes(commandName)) {
@@ -105,14 +47,15 @@ export function validateCommand(commandName: string, args: string): ValidationRe
   return { valid: true };
 }
 
-/**
- * Execute a whitelisted command
- */
+export interface CommandExecuteResult extends ExecutionResult {
+  taskResult?: TaskResult;
+}
+
 export async function executeCommand(
   commandName: string,
   args: string,
   context: ExecutionContext = {}
-): Promise<ExecutionResult> {
+): Promise<CommandExecuteResult> {
   const timestamp = new Date().toISOString();
   const enableMonitoring = (context.enableMonitoring !== false) && !!context.telegram && !!context.chatId;
   
@@ -134,55 +77,59 @@ export async function executeCommand(
     };
   }
   
-  let builtCommand: BuiltCommand;
+  const sanitized = sanitizeInput(args);
+  if (!sanitized) {
+    console.log('Sanitized args is empty');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    return {
+      success: false,
+      error: 'Prompt cannot be empty',
+    };
+  }
+  
   try {
-    builtCommand = buildCommandWithDirectory(commandName, args, enableMonitoring);
-    console.log(`Built command: ${builtCommand.command}`);
+    const taskResult = await taskManager.createTask(commandName, sanitized, context);
     
-    const cmdConfig = config.commands[commandName];
-    const cliType = getCliType(cmdConfig.cli);
-    console.log(`CLI type: ${cliType}`);
-    if (cmdConfig.model) {
-      console.log(`Using model: ${cmdConfig.model}`);
+    console.log(`Task created: ${taskResult.taskId}`);
+    console.log(`  Status: ${taskResult.status}`);
+    console.log(`  Session: ${taskResult.sessionName}`);
+    console.log(`  Branch: ${taskResult.branchName}`);
+    if (taskResult.queuePosition) {
+      console.log(`  Queue position: ${taskResult.queuePosition}`);
     }
-    if (builtCommand.statusFile) {
-      console.log(`Status file: ${builtCommand.statusFile}`);
+    
+    if (enableMonitoring && context.telegram && context.chatId && taskResult.status === 'running') {
+      const task = taskManager.getTask(taskResult.taskId);
+      if (task) {
+        startMonitoring({
+          taskId: taskResult.taskId,
+          sessionName: taskResult.sessionName,
+          statusFile: task.statusFile,
+          telegram: context.telegram,
+          chatId: context.chatId,
+          taskName: `/${commandName}`,
+          branchName: taskResult.branchName,
+          onCompletion: async (taskId) => {
+            await taskManager.completeTask(taskId);
+          },
+        });
+      }
     }
+    
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    return {
+      success: true,
+      error: null,
+      taskResult,
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.log(`Failed to build command: ${errorMessage}`);
+    console.log(`Failed to create task: ${errorMessage}`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     return {
       success: false,
       error: errorMessage,
     };
   }
-  
-  const sessionName = config.commands[commandName].session;
-  console.log(`Using tmux session: ${sessionName}`);
-  
-  const success = await executeInTmux(builtCommand.command, sessionName);
-  
-  if (success) {
-    console.log(`Command executed successfully`);
-    
-    if (enableMonitoring && builtCommand.statusFile && context.telegram && context.chatId) {
-      startMonitoring({
-        sessionName,
-        statusFile: builtCommand.statusFile,
-        telegram: context.telegram,
-        chatId: context.chatId,
-        taskName: `/${commandName}`,
-      });
-    }
-  } else {
-    console.log(`Command execution failed`);
-  }
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  
-  return {
-    success,
-    error: success ? null : 'Command execution failed - please contact administrator',
-    statusFile: builtCommand.statusFile ?? undefined,
-  };
 }

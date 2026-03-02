@@ -1,26 +1,34 @@
-import type { TelegramClient } from '../types';
-import { hasOpencodeProcess, killOpencodeInSession } from '../tmux/session';
+import type { TelegramClient, TaskId } from "../types";
+import { hasOpencodeProcess, killOpencodeInSession } from "../tmux/session";
 
 const MONITOR_INTERVAL_MS = 60000;
-const MAX_MONITOR_DURATION_MS = 60 * 60 * 1000; // 1 hour
+const MAX_MONITOR_DURATION_MS = 60 * 60 * 1000;
 
 interface ActiveMonitor {
+  taskId: TaskId;
   sessionName: string;
   statusFile: string;
   startTime: number;
   intervalId: Timer;
   taskName: string;
+  branchName: string;
 }
 
-const activeMonitors = new Map<string, ActiveMonitor>();
+const activeMonitors = new Map<TaskId, ActiveMonitor>();
 
 export interface MonitorOptions {
+  taskId: TaskId;
   sessionName: string;
   statusFile: string;
   telegram: TelegramClient;
   chatId: number;
   taskName: string;
-  onCompletion?: (sessionName: string, duration: number, killedCount: number) => Promise<void>;
+  branchName: string;
+  onCompletion?: (
+    taskId: TaskId,
+    duration: number,
+    killedCount: number,
+  ) => Promise<void>;
 }
 
 export interface CommandWithStatus {
@@ -28,28 +36,30 @@ export interface CommandWithStatus {
   statusFile: string;
 }
 
-export function generateStatusFilePath(sessionName: string): string {
+export function generateStatusFilePath(
+  taskIdOrSession: TaskId | string,
+): string {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 8);
-  return `/tmp/opencode-${sessionName}-${timestamp}-${random}.done`;
+  return `/tmp/opencode-${taskIdOrSession}-${timestamp}-${random}.done`;
 }
 
 export function buildCompletionInstruction(statusFile: string): string {
   return `
 7. **CRITICAL COMPLETION SEQUENCE** - You MUST follow this exact order:
-   
+
    a) Complete ALL your tasks including:
       - Research and analysis
       - File creation/modification
       - Git commit (if applicable)
       - Git push to remote (if applicable)
       - Any other operations
-   
+
    b) ONLY AFTER everything is done, execute:
       touch ${statusFile}
-   
+
    c) This signal tells the system you have FULLY completed. Do NOT touch the file before all operations finish!
-   
+
    IMPORTANT: If you commit and push to GitHub, make sure the push completes successfully BEFORE touching the status file.
 `;
 }
@@ -65,30 +75,42 @@ async function checkStatusFileExists(statusFile: string): Promise<boolean> {
 
 async function cleanupStatusFile(statusFile: string): Promise<void> {
   try {
-    const exitCode = await Bun.spawn(['rm', '-f', statusFile]).exited;
+    const exitCode = await Bun.spawn(["rm", "-f", statusFile]).exited;
     if (exitCode === 0) {
       console.log(`[Monitor] Cleaned up status file: ${statusFile}`);
     }
   } catch (error) {
-    console.error(`[Monitor] Failed to cleanup status file ${statusFile}:`, error);
+    console.error(
+      `[Monitor] Failed to cleanup status file ${statusFile}:`,
+      error,
+    );
   }
 }
 
 export function startMonitoring(options: MonitorOptions): void {
-  const { sessionName, statusFile, telegram, chatId, taskName, onCompletion } = options;
+  const {
+    taskId,
+    sessionName,
+    statusFile,
+    telegram,
+    chatId,
+    taskName,
+    branchName,
+    onCompletion,
+  } = options;
 
-  if (activeMonitors.has(sessionName)) {
-    const existing = activeMonitors.get(sessionName)!;
+  if (activeMonitors.has(taskId)) {
+    const existing = activeMonitors.get(taskId)!;
     clearInterval(existing.intervalId);
-    activeMonitors.delete(sessionName);
-    console.log(`[Monitor] Stopped existing monitor for ${sessionName}`);
+    activeMonitors.delete(taskId);
+    console.log(`[Monitor] Stopped existing monitor for task ${taskId}`);
   }
 
   const startTime = Date.now();
 
   const intervalId = setInterval(async () => {
     const elapsed = Date.now() - startTime;
-    const monitor = activeMonitors.get(sessionName);
+    const monitor = activeMonitors.get(taskId);
 
     if (!monitor) {
       clearInterval(intervalId);
@@ -97,8 +119,10 @@ export function startMonitoring(options: MonitorOptions): void {
 
     if (elapsed > MAX_MONITOR_DURATION_MS) {
       clearInterval(intervalId);
-      activeMonitors.delete(sessionName);
-      console.log(`[Monitor] ${sessionName} exceeded max duration (1h), force stopping`);
+      activeMonitors.delete(taskId);
+      console.log(
+        `[Monitor] Task ${taskId} exceeded max duration (1h), force stopping`,
+      );
 
       const killedCount = await killOpencodeInSession(sessionName);
       await cleanupStatusFile(statusFile);
@@ -108,10 +132,10 @@ export function startMonitoring(options: MonitorOptions): void {
       try {
         await telegram.sendMessage(
           chatId,
-          `⏰ 任务超时，已强制停止\n\n任务: ${taskName}\nSession: ${sessionName}\n运行时长: ${durationMinutes} 分钟\n清理进程: ${killedCount} 个\n\n任务执行超过1小时，已强制终止。`
+          `⏰ 任务超时，已强制停止\n\n任务ID: ${taskId}\n任务: ${taskName}\nSession: ${sessionName}\n分支: ${branchName}\n运行时长: ${durationMinutes} 分钟\n清理进程: ${killedCount} 个\n\n任务执行超过1小时，已强制终止。`,
         );
       } catch (error) {
-        console.error('[Monitor] Failed to send timeout notification:', error);
+        console.error("[Monitor] Failed to send timeout notification:", error);
       }
       return;
     }
@@ -120,10 +144,12 @@ export function startMonitoring(options: MonitorOptions): void {
     const hasProcess = await hasOpencodeProcess(sessionName);
 
     if (statusFileExists) {
-      console.log(`[Monitor] Status file detected for ${sessionName}, task completed`);
+      console.log(
+        `[Monitor] Status file detected for task ${taskId}, task completed`,
+      );
 
       clearInterval(intervalId);
-      activeMonitors.delete(sessionName);
+      activeMonitors.delete(taskId);
 
       const killedCount = await killOpencodeInSession(sessionName);
       await cleanupStatusFile(statusFile);
@@ -131,70 +157,86 @@ export function startMonitoring(options: MonitorOptions): void {
       const durationMinutes = Math.round(elapsed / 1000 / 60);
 
       if (onCompletion) {
-        await onCompletion(sessionName, durationMinutes, killedCount);
+        await onCompletion(taskId, durationMinutes, killedCount);
       }
 
       try {
         await telegram.sendMessage(
           chatId,
-          `✅ 任务完成\n\n任务: ${taskName}\nSession: ${sessionName}\n耗时: ${durationMinutes} 分钟\n清理进程: ${killedCount} 个\n\n任务已成功完成并清理。`
+          `✅ 任务执行完成\n\n任务ID: ${taskId}\n任务: ${taskName}\nSession: ${sessionName}\n分支: ${branchName}\n耗时: ${durationMinutes} 分钟\n清理进程: ${killedCount} 个`,
         );
       } catch (error) {
-        console.error('[Monitor] Failed to send completion notification:', error);
+        console.error(
+          "[Monitor] Failed to send completion notification:",
+          error,
+        );
       }
       return;
     }
 
     if (!hasProcess && elapsed > 60000) {
-      console.log(`[Monitor] No opencode process in ${sessionName}, but no status file. Task may have ended unexpectedly.`);
+      console.log(
+        `[Monitor] No opencode process in ${sessionName}, but no status file. Task may have ended unexpectedly.`,
+      );
 
       clearInterval(intervalId);
-      activeMonitors.delete(sessionName);
+      activeMonitors.delete(taskId);
 
       const durationMinutes = Math.round(elapsed / 1000 / 60);
 
       try {
         await telegram.sendMessage(
           chatId,
-          `⚠️ 任务异常结束\n\n任务: ${taskName}\nSession: ${sessionName}\n耗时: ${durationMinutes} 分钟\n\nopencode 进程已结束，但未检测到完成标记。可能是任务被中断或出错。`
+          `⚠️ 任务异常结束\n\n任务ID: ${taskId}\n任务: ${taskName}\nSession: ${sessionName}\n分支: ${branchName}\n耗时: ${durationMinutes} 分钟\n\nopencode 进程已结束，但未检测到完成标记。可能是任务被中断或出错。`,
         );
       } catch (error) {
-        console.error('[Monitor] Failed to send unexpected end notification:', error);
+        console.error(
+          "[Monitor] Failed to send unexpected end notification:",
+          error,
+        );
       }
     }
   }, MONITOR_INTERVAL_MS);
 
-  activeMonitors.set(sessionName, {
+  activeMonitors.set(taskId, {
+    taskId,
     sessionName,
     statusFile,
     startTime,
     intervalId,
     taskName,
+    branchName,
   });
 
-  console.log(`[Monitor] Started monitoring for ${sessionName}, status file: ${statusFile}`);
+  console.log(
+    `[Monitor] Started monitoring for task ${taskId}, session: ${sessionName}, status file: ${statusFile}`,
+  );
 }
 
-export function stopMonitoring(sessionName: string): boolean {
-  const monitor = activeMonitors.get(sessionName);
+export function stopMonitoring(taskId: TaskId): boolean {
+  const monitor = activeMonitors.get(taskId);
   if (monitor) {
     clearInterval(monitor.intervalId);
-    activeMonitors.delete(sessionName);
-    console.log(`[Monitor] Stopped monitoring for ${sessionName}`);
+    activeMonitors.delete(taskId);
+    console.log(`[Monitor] Stopped monitoring for task ${taskId}`);
     return true;
   }
   return false;
 }
 
 export function stopAllMonitors(): void {
-  for (const [sessionName, monitor] of activeMonitors) {
+  for (const [taskId, monitor] of activeMonitors) {
     clearInterval(monitor.intervalId);
-    console.log(`[Monitor] Stopped monitoring for ${sessionName}`);
+    console.log(`[Monitor] Stopped monitoring for task ${taskId}`);
   }
   activeMonitors.clear();
-  console.log('[Monitor] All monitors stopped');
+  console.log("[Monitor] All monitors stopped");
 }
 
-export function getActiveMonitors(): string[] {
+export function getActiveMonitors(): TaskId[] {
   return Array.from(activeMonitors.keys());
+}
+
+export function getMonitor(taskId: TaskId): ActiveMonitor | undefined {
+  return activeMonitors.get(taskId);
 }
