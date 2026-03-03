@@ -15,7 +15,6 @@ import { initializeCronTasks, stopCronJobs } from './scheduler';
 import { taskManager } from './task-manager';
 import { stopAllMonitors } from './monitor';
 import type { Cron } from 'croner';
-import type { Task } from './types';
 
 async function main(): Promise<void> {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -44,21 +43,6 @@ async function main(): Promise<void> {
   const bot = new Telegraf(config.telegramBotToken);
 
   taskManager.setTelegramClient(bot.telegram);
-  
-  taskManager.setTaskCompletionCallback(async (task: Task) => {
-    if (task.chatId) {
-      try {
-        await bot.telegram.sendMessage(
-          task.chatId,
-          `✅ 任务完成！\n\n` +
-          `任务 ID: ${task.id}\n` +
-          `分支: ${task.branchName}`
-        );
-      } catch (error) {
-        console.error('[TaskManager] Failed to send completion notification:', error);
-      }
-    }
-  });
 
   bot.use(loggingMiddleware());
 

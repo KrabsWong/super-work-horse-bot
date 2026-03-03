@@ -171,6 +171,8 @@ export interface Task {
   username?: string;
   /** Chat ID for notifications */
   chatId?: number;
+  /** Telegram message ID for status updates (used for editing) */
+  messageId?: number;
   /** Error message if failed */
   error?: string;
 }

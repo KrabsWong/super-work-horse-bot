@@ -2,6 +2,7 @@ import { config } from '../config';
 import { startMonitoring } from '../monitor';
 import type { ExecutionResult, ValidationResult, ExecutionContext, TaskResult } from '../types';
 import { taskManager } from '../task-manager';
+import { sendTaskMessage, type TaskMessageData } from '../messenger';
 
 export function sanitizeInput(input: string): string {
   if (!input || typeof input !== 'string') {
@@ -98,6 +99,30 @@ export async function executeCommand(
       console.log(`  Queue position: ${taskResult.queuePosition}`);
     }
     
+    let messageId: number | null = null;
+    
+    if (context.telegram && context.chatId) {
+      const task = taskManager.getTask(taskResult.taskId);
+      if (task) {
+        const messageData: TaskMessageData = {
+          taskId: taskResult.taskId,
+          commandName,
+          args: sanitized,
+          sessionName: taskResult.sessionName,
+          branchName: taskResult.branchName,
+          status: taskResult.status,
+          duration: 0,
+        };
+        
+        messageId = await sendTaskMessage(context.telegram, context.chatId, messageData);
+        
+        if (messageId) {
+          task.messageId = messageId;
+          console.log(`  Message ID: ${messageId}`);
+        }
+      }
+    }
+    
     if (enableMonitoring && context.telegram && context.chatId && taskResult.status === 'running') {
       const task = taskManager.getTask(taskResult.taskId);
       if (task) {
@@ -109,6 +134,8 @@ export async function executeCommand(
           chatId: context.chatId,
           taskName: `/${commandName}`,
           branchName: taskResult.branchName,
+          messageId: messageId || undefined,
+          args: sanitized,
           onCompletion: async (taskId) => {
             await taskManager.completeTask(taskId);
           },

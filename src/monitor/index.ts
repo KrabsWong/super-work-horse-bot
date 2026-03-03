@@ -1,5 +1,6 @@
 import type { TelegramClient, TaskId } from "../types";
 import { hasOpencodeProcess, killOpencodeInSession } from "../tmux/session";
+import { updateTaskMessage } from "../messenger";
 
 const MONITOR_INTERVAL_MS = 60000;
 const MAX_MONITOR_DURATION_MS = 60 * 60 * 1000;
@@ -12,6 +13,8 @@ interface ActiveMonitor {
   intervalId: Timer;
   taskName: string;
   branchName: string;
+  messageId?: number;
+  args: string;
 }
 
 const activeMonitors = new Map<TaskId, ActiveMonitor>();
@@ -24,6 +27,8 @@ export interface MonitorOptions {
   chatId: number;
   taskName: string;
   branchName: string;
+  messageId?: number;
+  args: string;
   onCompletion?: (
     taskId: TaskId,
     duration: number,
@@ -96,6 +101,8 @@ export function startMonitoring(options: MonitorOptions): void {
     chatId,
     taskName,
     branchName,
+    messageId,
+    args,
     onCompletion,
   } = options;
 
@@ -128,12 +135,26 @@ export function startMonitoring(options: MonitorOptions): void {
       await cleanupStatusFile(statusFile);
 
       const durationMinutes = Math.round(elapsed / 1000 / 60);
+      const commandName = taskName.replace(/^\//, '');
 
       try {
-        await telegram.sendMessage(
-          chatId,
-          `⏰ 任务超时，已强制停止\n\n任务ID: ${taskId}\n任务: ${taskName}\nSession: ${sessionName}\n分支: ${branchName}\n运行时长: ${durationMinutes} 分钟\n清理进程: ${killedCount} 个\n\n任务执行超过1小时，已强制终止。`,
-        );
+        if (monitor.messageId) {
+          await updateTaskMessage(telegram, chatId, monitor.messageId, {
+            taskId,
+            commandName,
+            args: monitor.args,
+            sessionName,
+            branchName,
+            status: 'timeout',
+            duration: durationMinutes,
+            killedCount,
+          });
+        } else {
+          await telegram.sendMessage(
+            chatId,
+            `⏰ 任务超时，已强制停止\n\n任务ID: ${taskId}\n任务: ${taskName}\nSession: ${sessionName}\n分支: ${branchName}\n运行时长: ${durationMinutes} 分钟\n清理进程: ${killedCount} 个\n\n任务执行超过1小时，已强制终止。`,
+          );
+        }
       } catch (error) {
         console.error("[Monitor] Failed to send timeout notification:", error);
       }
@@ -142,6 +163,24 @@ export function startMonitoring(options: MonitorOptions): void {
 
     const statusFileExists = await checkStatusFileExists(statusFile);
     const hasProcess = await hasOpencodeProcess(sessionName);
+    const durationMinutes = Math.round(elapsed / 1000 / 60);
+
+    if (monitor.messageId && hasProcess) {
+      const commandName = taskName.replace(/^\//, '');
+      try {
+        await updateTaskMessage(telegram, chatId, monitor.messageId, {
+          taskId,
+          commandName,
+          args: monitor.args,
+          sessionName,
+          branchName,
+          status: 'running',
+          duration: durationMinutes,
+        });
+      } catch (error) {
+        console.error("[Monitor] Failed to update progress:", error);
+      }
+    }
 
     if (statusFileExists) {
       console.log(
@@ -160,11 +199,26 @@ export function startMonitoring(options: MonitorOptions): void {
         await onCompletion(taskId, durationMinutes, killedCount);
       }
 
+      const commandName = taskName.replace(/^\//, '');
+
       try {
-        await telegram.sendMessage(
-          chatId,
-          `✅ 任务执行完成\n\n任务ID: ${taskId}\n任务: ${taskName}\nSession: ${sessionName}\n分支: ${branchName}\n耗时: ${durationMinutes} 分钟\n清理进程: ${killedCount} 个`,
-        );
+        if (monitor.messageId) {
+          await updateTaskMessage(telegram, chatId, monitor.messageId, {
+            taskId,
+            commandName,
+            args: monitor.args,
+            sessionName,
+            branchName,
+            status: 'completed',
+            duration: durationMinutes,
+            killedCount,
+          });
+        } else {
+          await telegram.sendMessage(
+            chatId,
+            `✅ 任务执行完成\n\n任务ID: ${taskId}\n任务: ${taskName}\nSession: ${sessionName}\n分支: ${branchName}\n耗时: ${durationMinutes} 分钟\n清理进程: ${killedCount} 个`,
+          );
+        }
       } catch (error) {
         console.error(
           "[Monitor] Failed to send completion notification:",
@@ -183,12 +237,26 @@ export function startMonitoring(options: MonitorOptions): void {
       activeMonitors.delete(taskId);
 
       const durationMinutes = Math.round(elapsed / 1000 / 60);
+      const commandName = taskName.replace(/^\//, '');
 
       try {
-        await telegram.sendMessage(
-          chatId,
-          `⚠️ 任务异常结束\n\n任务ID: ${taskId}\n任务: ${taskName}\nSession: ${sessionName}\n分支: ${branchName}\n耗时: ${durationMinutes} 分钟\n\nopencode 进程已结束，但未检测到完成标记。可能是任务被中断或出错。`,
-        );
+        if (monitor.messageId) {
+          await updateTaskMessage(telegram, chatId, monitor.messageId, {
+            taskId,
+            commandName,
+            args: monitor.args,
+            sessionName,
+            branchName,
+            status: 'error',
+            duration: durationMinutes,
+            error: 'opencode 进程已结束，但未检测到完成标记。可能是任务被中断或出错。',
+          });
+        } else {
+          await telegram.sendMessage(
+            chatId,
+            `⚠️ 任务异常结束\n\n任务ID: ${taskId}\n任务: ${taskName}\nSession: ${sessionName}\n分支: ${branchName}\n耗时: ${durationMinutes} 分钟\n\nopencode 进程已结束，但未检测到完成标记。可能是任务被中断或出错。`,
+          );
+        }
       } catch (error) {
         console.error(
           "[Monitor] Failed to send unexpected end notification:",
@@ -206,6 +274,8 @@ export function startMonitoring(options: MonitorOptions): void {
     intervalId,
     taskName,
     branchName,
+    messageId,
+    args,
   });
 
   console.log(

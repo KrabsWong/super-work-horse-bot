@@ -74,14 +74,6 @@ export function createCommandHandler(commandName: string): (ctx: TextMessageCont
       return;
     }
     
-    const cmdConfig = config.commands[commandName];
-    await ctx.reply(
-      `Executing your command...\n\n` +
-      `Command: ${commandName}\n` +
-      `Directory: ${cmdConfig.dir}\n` +
-      `Text: ${args.substring(0, 100)}${args.length > 100 ? '...' : ''}`
-    );
-    
     const context = {
       userId: ctx.from.id,
       username: ctx.from.username,
@@ -92,27 +84,7 @@ export function createCommandHandler(commandName: string): (ctx: TextMessageCont
     
     const result = await executeCommand(commandName, args, context);
     
-    if (result.success && result.taskResult) {
-      const taskResult = result.taskResult;
-      
-      if (taskResult.status === 'running') {
-        await ctx.reply(
-          `✅ 任务已启动\n\n` +
-          `任务 ID: ${taskResult.taskId}\n` +
-          `分支: ${taskResult.branchName}\n` +
-          `Session: ${taskResult.sessionName}\n\n` +
-          `查看进度: tmux attach -t ${taskResult.sessionName}`
-        );
-      } else if (taskResult.status === 'queued') {
-        await ctx.reply(
-          `⏳ 任务已排队\n\n` +
-          `任务 ID: ${taskResult.taskId}\n` +
-          `队列位置: 第 ${taskResult.queuePosition} 位\n\n` +
-          `当前有 ${cmdConfig.maxConcurrent} 个任务运行中，等待执行...\n` +
-          `使用 /status 查看进度`
-        );
-      }
-    } else {
+    if (!result.success) {
       await ctx.reply(
         `Command execution failed\n\n` +
         `Error: ${result.error}`

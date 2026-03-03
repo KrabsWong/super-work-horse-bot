@@ -3,6 +3,7 @@ import type { BotInstance } from '../types';
 import { config } from '../config';
 import { executeInTmux } from '../tmux/session';
 import { startMonitoring, generateStatusFilePath, buildCompletionInstruction } from '../monitor';
+import { sendTaskMessage, type TaskMessageData } from '../messenger';
 
 function generateCronTaskId(): string {
   const timestamp = Date.now();
@@ -181,11 +182,6 @@ async function executeCronTask(
   console.log(`[${timestamp}] Cron task '${taskName}' triggered`);
 
   try {
-    await bot.telegram.sendMessage(
-      chatId,
-      `⏰ 定时任务触发\n\n任务: ${taskName}\n时间: ${new Date().toLocaleString('zh-CN')}\n\n正在生成研究主题...`
-    );
-
     const prompt = await generateResearchPrompt();
     console.log(`Generated prompt: ${prompt}`);
 
@@ -197,12 +193,21 @@ async function executeCronTask(
 
     if (success) {
       console.log(`Cron task '${taskName}' executed successfully in session '${sessionName}'`);
-      await bot.telegram.sendMessage(
-        chatId,
-        `✅ 定时任务已开始执行\n\n主题: ${prompt.substring(0, 100)}...\nSession: ${sessionName}\n\n可通过以下命令查看进度:\ntmux attach -t ${sessionName}`
-      );
 
       const cronTaskId = generateCronTaskId();
+      
+      const messageData: TaskMessageData = {
+        taskId: cronTaskId,
+        commandName,
+        args: prompt.substring(0, 200),
+        sessionName,
+        branchName: `cron-${sessionName}`,
+        status: 'running',
+        duration: 0,
+      };
+      
+      const messageId = await sendTaskMessage(bot.telegram, chatId, messageData);
+
       startMonitoring({
         taskId: cronTaskId,
         sessionName,
@@ -211,6 +216,8 @@ async function executeCronTask(
         chatId,
         taskName: `定时任务: ${taskName}`,
         branchName: `cron-${sessionName}`,
+        args: prompt.substring(0, 200),
+        messageId: messageId || undefined,
       });
     } else {
       console.error(`Cron task '${taskName}' failed to execute`);
