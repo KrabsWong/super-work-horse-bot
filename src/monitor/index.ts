@@ -34,6 +34,11 @@ export interface MonitorOptions {
     duration: number,
     killedCount: number,
   ) => Promise<void>;
+  onFailure?: (
+    taskId: TaskId,
+    reason: 'timeout' | 'unexpected_exit',
+    duration: number,
+  ) => Promise<void>;
 }
 
 export interface CommandWithStatus {
@@ -104,6 +109,7 @@ export function startMonitoring(options: MonitorOptions): void {
     messageId,
     args,
     onCompletion,
+    onFailure,
   } = options;
 
   if (activeMonitors.has(taskId)) {
@@ -136,6 +142,14 @@ export function startMonitoring(options: MonitorOptions): void {
 
       const durationMinutes = Math.round(elapsed / 1000 / 60);
       const commandName = taskName.replace(/^\//, '');
+
+      if (onFailure) {
+        try {
+          await onFailure(taskId, 'timeout', durationMinutes);
+        } catch (cbError) {
+          console.error('[Monitor] onFailure callback error (timeout):', cbError);
+        }
+      }
 
       try {
         if (monitor.messageId) {
@@ -193,10 +207,10 @@ export function startMonitoring(options: MonitorOptions): void {
       const killedCount = await killOpencodeInSession(sessionName);
       await cleanupStatusFile(statusFile);
 
-      const durationMinutes = Math.round(elapsed / 1000 / 60);
+      const durationMinutes2 = Math.round(elapsed / 1000 / 60);
 
       if (onCompletion) {
-        await onCompletion(taskId, durationMinutes, killedCount);
+        await onCompletion(taskId, durationMinutes2, killedCount);
       }
 
       const commandName = taskName.replace(/^\//, '');
@@ -210,13 +224,13 @@ export function startMonitoring(options: MonitorOptions): void {
             sessionName,
             branchName,
             status: 'completed',
-            duration: durationMinutes,
+            duration: durationMinutes2,
             killedCount,
           });
         } else {
           await telegram.sendMessage(
             chatId,
-            `✅ 任务执行完成\n\n任务ID: ${taskId}\n任务: ${taskName}\nSession: ${sessionName}\n分支: ${branchName}\n耗时: ${durationMinutes} 分钟\n清理进程: ${killedCount} 个`,
+            `✅ 任务执行完成\n\n任务ID: ${taskId}\n任务: ${taskName}\nSession: ${sessionName}\n分支: ${branchName}\n耗时: ${durationMinutes2} 分钟\n清理进程: ${killedCount} 个`,
           );
         }
       } catch (error) {
@@ -236,8 +250,16 @@ export function startMonitoring(options: MonitorOptions): void {
       clearInterval(intervalId);
       activeMonitors.delete(taskId);
 
-      const durationMinutes = Math.round(elapsed / 1000 / 60);
+      const durationMinutes3 = Math.round(elapsed / 1000 / 60);
       const commandName = taskName.replace(/^\//, '');
+
+      if (onFailure) {
+        try {
+          await onFailure(taskId, 'unexpected_exit', durationMinutes3);
+        } catch (cbError) {
+          console.error('[Monitor] onFailure callback error (unexpected_exit):', cbError);
+        }
+      }
 
       try {
         if (monitor.messageId) {
@@ -248,13 +270,13 @@ export function startMonitoring(options: MonitorOptions): void {
             sessionName,
             branchName,
             status: 'error',
-            duration: durationMinutes,
+            duration: durationMinutes3,
             error: 'opencode 进程已结束，但未检测到完成标记。可能是任务被中断或出错。',
           });
         } else {
           await telegram.sendMessage(
             chatId,
-            `⚠️ 任务异常结束\n\n任务ID: ${taskId}\n任务: ${taskName}\nSession: ${sessionName}\n分支: ${branchName}\n耗时: ${durationMinutes} 分钟\n\nopencode 进程已结束，但未检测到完成标记。可能是任务被中断或出错。`,
+            `⚠️ 任务异常结束\n\n任务ID: ${taskId}\n任务: ${taskName}\nSession: ${sessionName}\n分支: ${branchName}\n耗时: ${durationMinutes3} 分钟\n\nopencode 进程已结束，但未检测到完成标记。可能是任务被中断或出错。`,
           );
         }
       } catch (error) {

@@ -139,6 +139,9 @@ export async function executeCommand(
           onCompletion: async (taskId) => {
             await taskManager.completeTask(taskId);
           },
+          onFailure: async (taskId, _reason, _duration) => {
+            await taskManager.failTask(taskId, `Task ended unexpectedly (${_reason})`);
+          },
         });
       }
     }

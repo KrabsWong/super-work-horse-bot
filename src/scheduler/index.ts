@@ -1,15 +1,9 @@
 import { Cron } from 'croner';
 import type { BotInstance } from '../types';
 import { config } from '../config';
-import { executeInTmux } from '../tmux/session';
-import { startMonitoring, generateStatusFilePath, buildCompletionInstruction } from '../monitor';
+import { startMonitoring } from '../monitor';
 import { sendTaskMessage, type TaskMessageData } from '../messenger';
-
-function generateCronTaskId(): string {
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 8);
-  return `cron-${timestamp}-${random}`;
-}
+import { taskManager } from '../task-manager';
 
 interface GitHubRepo {
   name: string;
@@ -132,47 +126,9 @@ async function generateResearchPrompt(): Promise<string> {
   return `硅基写手 ${promptContent}`;
 }
 
-function buildCronCommand(commandName: string, prompt: string, dir: string, sessionName: string): { command: string; statusFile: string } {
-  const cmdConfig = config.commands[commandName];
-  if (!cmdConfig) {
-    throw new Error(`Command '${commandName}' is not configured`);
-  }
-
-  const statusFile = generateStatusFilePath(sessionName);
-
-  let opencodeCmd = 'opencode';
-
-  if (cmdConfig.model) {
-    opencodeCmd += ` --model="${cmdConfig.model}"`;
-  }
-
-  let additionalInstructions = `
-IMPORTANT INSTRUCTIONS:
-1. This is a RESEARCH task.
-2. **STEP 1**: Read 'openspec/project.md'.
-3. **STEP 2 (Routing)**: Based on my request, CHOOSE the most appropriate template from the Template Selection Strategy section.
-   - If I asked for features/pricing -> Use 'product-requirement-standard.md'
-   - If I asked for feasibility/integration -> 'Use tech-feasibility-standard.md'
-4. **Action**: Create the directory and generated files strictly following the chosen template's structure.
-5. **Language**: Report content in CHINESE (中文).
-6. **Output**: Start by stating: 'Identifying Intent... Selected Template: [Template Name]'.
-`;
-
-  additionalInstructions += buildCompletionInstruction(statusFile);
-
-  opencodeCmd += ` --prompt="${cmdConfig.prompt} ${prompt}${additionalInstructions}"`;
-
-  return {
-    command: `cd ${dir} && ${opencodeCmd}`,
-    statusFile,
-  };
-}
-
 async function executeCronTask(
   taskName: string,
   commandName: string,
-  dir: string,
-  sessionName: string,
   bot: BotInstance,
   chatId: number
 ): Promise<void> {
@@ -185,45 +141,57 @@ async function executeCronTask(
     const prompt = await generateResearchPrompt();
     console.log(`Generated prompt: ${prompt}`);
 
-    const { command, statusFile } = buildCronCommand(commandName, prompt, dir, sessionName);
-    console.log(`Built command: ${command}`);
-    console.log(`Status file: ${statusFile}`);
+    const context = {
+      chatId,
+      userId: 0,
+      username: `cron:${taskName}`,
+      telegram: bot.telegram,
+      enableMonitoring: true,
+    };
 
-    const success = await executeInTmux(command, sessionName);
+    const taskResult = await taskManager.createTask(commandName, prompt, context);
+    console.log(`Cron task '${taskName}' created task: ${taskResult.taskId} (${taskResult.status})`);
 
-    if (success) {
-      console.log(`Cron task '${taskName}' executed successfully in session '${sessionName}'`);
+    if (taskResult.status === 'running') {
+      const task = taskManager.getTask(taskResult.taskId);
+      if (task) {
+        const messageData: TaskMessageData = {
+          taskId: taskResult.taskId,
+          commandName,
+          args: prompt.substring(0, 200),
+          sessionName: taskResult.sessionName,
+          branchName: taskResult.branchName,
+          status: 'running',
+          duration: 0,
+        };
 
-      const cronTaskId = generateCronTaskId();
-      
-      const messageData: TaskMessageData = {
-        taskId: cronTaskId,
-        commandName,
-        args: prompt.substring(0, 200),
-        sessionName,
-        branchName: `cron-${sessionName}`,
-        status: 'running',
-        duration: 0,
-      };
-      
-      const messageId = await sendTaskMessage(bot.telegram, chatId, messageData);
+        const messageId = await sendTaskMessage(bot.telegram, chatId, messageData);
+        if (messageId) {
+          task.messageId = messageId;
+        }
 
-      startMonitoring({
-        taskId: cronTaskId,
-        sessionName,
-        statusFile,
-        telegram: bot.telegram,
-        chatId,
-        taskName: `定时任务: ${taskName}`,
-        branchName: `cron-${sessionName}`,
-        args: prompt.substring(0, 200),
-        messageId: messageId || undefined,
-      });
-    } else {
-      console.error(`Cron task '${taskName}' failed to execute`);
+        startMonitoring({
+          taskId: taskResult.taskId,
+          sessionName: taskResult.sessionName,
+          statusFile: task.statusFile,
+          telegram: bot.telegram,
+          chatId,
+          taskName: `定时任务: ${taskName}`,
+          branchName: taskResult.branchName,
+          args: prompt.substring(0, 200),
+          messageId: messageId || undefined,
+          onCompletion: async (id) => {
+            await taskManager.completeTask(id);
+          },
+          onFailure: async (id, reason, _duration) => {
+            await taskManager.failTask(id, `Cron task ended unexpectedly (${reason})`);
+          },
+        });
+      }
+    } else if (taskResult.status === 'queued') {
       await bot.telegram.sendMessage(
         chatId,
-        `❌ 定时任务执行失败\n\n任务: ${taskName}\n请检查服务器日志获取详细信息。`
+        `⏳ 定时任务已排队\n\n任务: ${taskName}\n任务ID: ${taskResult.taskId}\n队列位置: ${taskResult.queuePosition}`
       );
     }
   } catch (error) {
@@ -269,8 +237,6 @@ export function initializeCronTasks(bot: BotInstance): Cron[] {
           await executeCronTask(
             taskName,
             taskConfig.commandName,
-            taskConfig.dir,
-            taskConfig.session,
             bot,
             taskConfig.chatId
           );
