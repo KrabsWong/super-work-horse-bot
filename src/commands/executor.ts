@@ -112,6 +112,7 @@ export async function executeCommand(
           branchName: taskResult.branchName,
           status: taskResult.status,
           duration: 0,
+          startedAt: task.startedAt,
         };
         
         messageId = await sendTaskMessage(context.telegram, context.chatId, messageData);
@@ -136,6 +137,7 @@ export async function executeCommand(
           branchName: taskResult.branchName,
           messageId: messageId || undefined,
           args: sanitized,
+          startedAt: task.startedAt,
           onCompletion: async (taskId) => {
             await taskManager.completeTask(taskId);
           },

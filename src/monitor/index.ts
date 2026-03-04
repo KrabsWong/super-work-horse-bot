@@ -15,6 +15,7 @@ interface ActiveMonitor {
   branchName: string;
   messageId?: number;
   args: string;
+  startedAt: number;
 }
 
 const activeMonitors = new Map<TaskId, ActiveMonitor>();
@@ -29,6 +30,7 @@ export interface MonitorOptions {
   branchName: string;
   messageId?: number;
   args: string;
+  startedAt?: number;
   onCompletion?: (
     taskId: TaskId,
     duration: number,
@@ -108,6 +110,7 @@ export function startMonitoring(options: MonitorOptions): void {
     branchName,
     messageId,
     args,
+    startedAt,
     onCompletion,
     onFailure,
   } = options;
@@ -162,6 +165,8 @@ export function startMonitoring(options: MonitorOptions): void {
             status: 'timeout',
             duration: durationMinutes,
             killedCount,
+            startedAt: monitor.startedAt,
+            completedAt: Date.now(),
           });
         } else {
           await telegram.sendMessage(
@@ -190,6 +195,7 @@ export function startMonitoring(options: MonitorOptions): void {
           branchName,
           status: 'running',
           duration: durationMinutes,
+          startedAt: monitor.startedAt,
         });
       } catch (error) {
         console.error("[Monitor] Failed to update progress:", error);
@@ -226,6 +232,8 @@ export function startMonitoring(options: MonitorOptions): void {
             status: 'completed',
             duration: durationMinutes2,
             killedCount,
+            startedAt: monitor.startedAt,
+            completedAt: Date.now(),
           });
         } else {
           await telegram.sendMessage(
@@ -272,6 +280,8 @@ export function startMonitoring(options: MonitorOptions): void {
             status: 'error',
             duration: durationMinutes3,
             error: 'opencode 进程已结束，但未检测到完成标记。可能是任务被中断或出错。',
+            startedAt: monitor.startedAt,
+            completedAt: Date.now(),
           });
         } else {
           await telegram.sendMessage(
@@ -298,6 +308,7 @@ export function startMonitoring(options: MonitorOptions): void {
     branchName,
     messageId,
     args,
+    startedAt: startedAt || startTime,
   });
 
   console.log(
