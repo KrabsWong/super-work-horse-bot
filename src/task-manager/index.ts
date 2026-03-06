@@ -1,4 +1,4 @@
-import type { TaskId, Task, TaskResult, ExecutionContext, TelegramClient } from '../types';
+import type { TaskId, Task, TaskResult, ExecutionContext, MessengerClient } from '../types';
 import { TaskStatus } from '../types';
 import { SlotManager } from './slot-manager';
 import { TaskQueue } from './queue';
@@ -30,14 +30,14 @@ export class TaskManager {
   private taskQueues: Map<string, TaskQueue> = new Map();
   private tasks: Map<TaskId, Task> = new Map();
   private onTaskCompletion: TaskCompletionCallback | null = null;
-  private _telegramClient: TelegramClient | null = null;
+  private _messengerClient: MessengerClient | null = null;
 
-  setTelegramClient(client: TelegramClient): void {
-    this._telegramClient = client;
+  setMessengerClient(client: MessengerClient): void {
+    this._messengerClient = client;
   }
 
-  getTelegramClient(): TelegramClient | null {
-    return this._telegramClient;
+  getMessengerClient(): MessengerClient | null {
+    return this._messengerClient;
   }
 
   setTaskCompletionCallback(callback: TaskCompletionCallback): void {

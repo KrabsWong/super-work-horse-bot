@@ -1,7 +1,5 @@
-import { Telegraf } from 'telegraf';
 import { config, validateConfig, initializeConfig } from './config';
 import { checkTmuxAvailability } from './tmux/session';
-import { loggingMiddleware, errorHandlingMiddleware } from './bot/middleware';
 import {
   handleStart,
   handleHelp,
@@ -10,15 +8,16 @@ import {
   handleUnknown,
   handleStatus,
   handleCancel,
-} from './bot/handlers';
+} from './messenger/telegram/handlers';
 import { initializeCronTasks, stopCronJobs } from './scheduler';
 import { taskManager } from './task-manager';
 import { stopAllMonitors } from './monitor';
+import { MessengerManager, TelegramMessenger, DiscordMessenger } from './messenger';
 import type { Cron } from 'croner';
 
 async function main(): Promise<void> {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('VibeCodingBot - Telegram Bot Server');
+  console.log('VibeCodingBot - Multi-Platform Bot Server');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   console.log('Loading configuration...');
@@ -39,43 +38,83 @@ async function main(): Promise<void> {
   taskManager.initialize();
   console.log('TaskManager initialized');
 
-  console.log('Initializing Telegram bot...');
-  const bot = new Telegraf(config.telegramBotToken);
+  console.log('Initializing Messenger platforms...');
+  const messengerManager = new MessengerManager();
 
-  taskManager.setTelegramClient(bot.telegram);
+  const { activePlatform, telegram, discord } = config.platforms;
 
-  bot.use(loggingMiddleware());
+  if (activePlatform === 'telegram') {
+    console.log('Registering Telegram platform...');
+    const telegramMessenger = new TelegramMessenger(telegram.token);
+    messengerManager.register(telegramMessenger);
+  } else if (activePlatform === 'discord') {
+    console.log('Registering Discord platform...');
+    const discordMessenger = new DiscordMessenger(discord.token);
+    messengerManager.register(discordMessenger);
+  }
 
-  bot.command('start', handleStart);
-  bot.command('help', handleHelp);
-  bot.command('finish', handleFinish);
-  bot.command('status', handleStatus);
-  bot.command('cancel', handleCancel);
-
+  // Register command handlers (platform-agnostic)
   const commandNames = Object.keys(config.commands);
+  
+  messengerManager.onCommand('start', async (ctx) => {
+    const reply = (msg: string) => ctx.messenger.sendMessage(ctx.chatId, msg);
+    await handleStart({ ...ctx, reply } as any);
+  });
+  
+  messengerManager.onCommand('help', async (ctx) => {
+    const reply = (msg: string) => ctx.messenger.sendMessage(ctx.chatId, msg);
+    await handleHelp({ ...ctx, reply } as any);
+  });
+  
+  messengerManager.onCommand('finish', async (ctx) => {
+    const reply = (msg: string) => ctx.messenger.sendMessage(ctx.chatId, msg);
+    await handleFinish({ ...ctx, reply } as any);
+  });
+  
+  messengerManager.onCommand('status', async (ctx) => {
+    const reply = (msg: string) => ctx.messenger.sendMessage(ctx.chatId, msg);
+    await handleStatus({ ...ctx, reply } as any);
+  });
+  
+  messengerManager.onCommand('cancel', async (ctx) => {
+    const reply = (msg: string) => ctx.messenger.sendMessage(ctx.chatId, msg);
+    await handleCancel({ ...ctx, reply } as any);
+  });
+
   for (const commandName of commandNames) {
-    const handler = createCommandHandler(commandName);
-    bot.command(commandName, handler);
+    messengerManager.onCommand(commandName, createCommandHandler(commandName));
     console.log(`Registered command handler: /${commandName}`);
   }
 
-  bot.on('message', handleUnknown);
-
-  bot.catch(errorHandlingMiddleware());
+  messengerManager.onUnknown(async (ctx) => {
+    const reply = (msg: string) => ctx.messenger.sendMessage(ctx.chatId, msg);
+    await handleUnknown({ ...ctx, reply } as any);
+  });
 
   let cronJobs: Cron[] = [];
   try {
-    cronJobs = initializeCronTasks(bot);
+    const activeMessenger = messengerManager.getPlatform(config.platforms.activePlatform);
+    
+    if (activeMessenger) {
+      const taskNames = Object.keys(config.cronTasks);
+      if (taskNames.length > 0) {
+        const firstTask = config.cronTasks[taskNames[0]];
+        cronJobs = initializeCronTasks({
+          messenger: activeMessenger,
+          chatId: String(firstTask.chatId),
+        });
+      }
+    }
   } catch (error) {
     console.error('Failed to initialize cron tasks:', error);
   }
 
-  console.log('Starting bot with long-polling...');
+  console.log('Starting bot platforms...');
   console.log(`Configured commands: ${commandNames.join(', ')}`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   try {
-    await bot.launch();
+    await messengerManager.startAll();
     console.log('Bot is running! Press Ctrl+C to stop.');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   } catch (error) {
@@ -92,7 +131,7 @@ async function main(): Promise<void> {
     stopCronJobs(cronJobs);
     stopAllMonitors();
     taskManager.cleanup();
-    bot.stop('SIGINT');
+    messengerManager.stopAll();
   });
 
   process.once('SIGTERM', () => {
@@ -101,7 +140,7 @@ async function main(): Promise<void> {
     stopCronJobs(cronJobs);
     stopAllMonitors();
     taskManager.cleanup();
-    bot.stop('SIGTERM');
+    messengerManager.stopAll();
   });
 }
 

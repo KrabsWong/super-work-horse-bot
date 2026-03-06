@@ -1,4 +1,4 @@
-import type { TelegramClient, TaskId } from "../types";
+import type { MessengerClient, TaskId } from "../types";
 import { hasOpencodeProcess, killOpencodeInSession } from "../tmux/session";
 import { updateTaskMessage } from "../messenger";
 
@@ -13,7 +13,7 @@ interface ActiveMonitor {
   intervalId: Timer;
   taskName: string;
   branchName: string;
-  messageId?: number;
+  messageId?: number | string;
   args: string;
   startedAt: number;
 }
@@ -24,11 +24,11 @@ export interface MonitorOptions {
   taskId: TaskId;
   sessionName: string;
   statusFile: string;
-  telegram: TelegramClient;
-  chatId: number;
+  messenger: MessengerClient;
+  chatId: number | string;
   taskName: string;
   branchName: string;
-  messageId?: number;
+  messageId?: number | string;
   args: string;
   startedAt?: number;
   onCompletion?: (
@@ -104,7 +104,7 @@ export function startMonitoring(options: MonitorOptions): void {
     taskId,
     sessionName,
     statusFile,
-    telegram,
+    messenger,
     chatId,
     taskName,
     branchName,
@@ -156,7 +156,7 @@ export function startMonitoring(options: MonitorOptions): void {
 
       try {
         if (monitor.messageId) {
-          await updateTaskMessage(telegram, chatId, monitor.messageId, {
+          await updateTaskMessage(messenger, String(chatId), String(monitor.messageId), {
             taskId,
             commandName,
             args: monitor.args,
@@ -169,9 +169,8 @@ export function startMonitoring(options: MonitorOptions): void {
             completedAt: Date.now(),
           });
         } else {
-          await telegram.sendMessage(
-            chatId,
-            `⏰ 任务超时，已强制停止\n\n任务ID: ${taskId}\n任务: ${taskName}\nSession: ${sessionName}\n分支: ${branchName}\n运行时长: ${durationMinutes} 分钟\n清理进程: ${killedCount} 个\n\n任务执行超过1小时，已强制终止。`,
+          await messenger.sendMessage(String(chatId),
+            `⏰ 任务超时，已强制停止\n\n任务ID: ${taskId}\n任务: ${taskName}\nSession: ${sessionName}\n分支: ${branchName}\n运行时长: ${durationMinutes} 分钟\n清理进程: ${killedCount} 个\n\n任务执行超过1小时，已强制终止。`
           );
         }
       } catch (error) {
@@ -187,7 +186,7 @@ export function startMonitoring(options: MonitorOptions): void {
     if (monitor.messageId && hasProcess) {
       const commandName = taskName.replace(/^\//, '');
       try {
-        await updateTaskMessage(telegram, chatId, monitor.messageId, {
+        await updateTaskMessage(messenger, String(chatId), String(monitor.messageId), {
           taskId,
           commandName,
           args: monitor.args,
@@ -223,7 +222,7 @@ export function startMonitoring(options: MonitorOptions): void {
 
       try {
         if (monitor.messageId) {
-          await updateTaskMessage(telegram, chatId, monitor.messageId, {
+          await updateTaskMessage(messenger, String(chatId), String(monitor.messageId), {
             taskId,
             commandName,
             args: monitor.args,
@@ -236,9 +235,8 @@ export function startMonitoring(options: MonitorOptions): void {
             completedAt: Date.now(),
           });
         } else {
-          await telegram.sendMessage(
-            chatId,
-            `✅ 任务执行完成\n\n任务ID: ${taskId}\n任务: ${taskName}\nSession: ${sessionName}\n分支: ${branchName}\n耗时: ${durationMinutes2} 分钟\n清理进程: ${killedCount} 个`,
+          await messenger.sendMessage(String(chatId),
+            `✅ 任务执行完成\n\n任务ID: ${taskId}\n任务: ${taskName}\nSession: ${sessionName}\n分支: ${branchName}\n耗时: ${durationMinutes2} 分钟\n清理进程: ${killedCount} 个`
           );
         }
       } catch (error) {
@@ -271,7 +269,7 @@ export function startMonitoring(options: MonitorOptions): void {
 
       try {
         if (monitor.messageId) {
-          await updateTaskMessage(telegram, chatId, monitor.messageId, {
+          await updateTaskMessage(messenger, String(chatId), String(monitor.messageId), {
             taskId,
             commandName,
             args: monitor.args,
@@ -284,9 +282,8 @@ export function startMonitoring(options: MonitorOptions): void {
             completedAt: Date.now(),
           });
         } else {
-          await telegram.sendMessage(
-            chatId,
-            `⚠️ 任务异常结束\n\n任务ID: ${taskId}\n任务: ${taskName}\nSession: ${sessionName}\n分支: ${branchName}\n耗时: ${durationMinutes3} 分钟\n\nopencode 进程已结束，但未检测到完成标记。可能是任务被中断或出错。`,
+          await messenger.sendMessage(String(chatId),
+            `⚠️ 任务异常结束\n\n任务ID: ${taskId}\n任务: ${taskName}\nSession: ${sessionName}\n分支: ${branchName}\n耗时: ${durationMinutes3} 分钟\n\nopencode 进程已结束，但未检测到完成标记。可能是任务被中断或出错。`
           );
         }
       } catch (error) {

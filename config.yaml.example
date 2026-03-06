@@ -1,25 +1,88 @@
 # VibeCodingBot Configuration
-# Copy this file to config.yaml and fill in your values
+# Multi-platform bot supporting Telegram and Discord
 
-telegramBotToken: your_bot_token_here
+# =============================================================================
+# Platform Configuration
+# =============================================================================
+
+platforms:
+  # Which platform to use: 'telegram' or 'discord'
+  activePlatform: telegram
+
+  # Telegram configuration
+  telegram:
+    token: your_telegram_bot_token_here
+
+  # Discord configuration
+  discord:
+    token: your_discord_bot_token_here
+
+# =============================================================================
+# Bot Settings
+# =============================================================================
+
 logLevel: info
 
-# 可选：worktree 存放目录
-# 不设置则使用仓库的父目录
-worktreeBaseDir: ~/Personal/worktrees
+# Base directory for git worktrees (optional, defaults to parent of repo)
+# worktreeBaseDir: ~/workspace/worktrees
+
+# =============================================================================
+# Commands Configuration
+# =============================================================================
 
 commands:
   - name: research
+    # Working directory for this command
     dir: ~/workspace/research
+    # Prompt prefix sent to opencode
     prompt: /opsx:propose
+    # tmux session name prefix
     session: research-bot
+    # AI model to use (optional)
     model: opencode/glm-4.7-free
-    # 新增配置项
-    maxConcurrent: 3        # 最大并发任务数，默认 3
+    # Maximum concurrent tasks for this command
+    maxConcurrent: 3
+
+  # Example: Add more commands
+  # - name: dev
+  #   dir: ~/workspace/dev
+  #   prompt: /opsx:propose
+  #   session: dev-bot
+  #   model: opencode/glm-4.7-free
+  #   maxConcurrent: 2
+
+# =============================================================================
+# Cron Tasks (Scheduled Tasks)
+# =============================================================================
 
 cronTasks:
   - name: daily-research
+    # Cron expression (this runs at 9:00 AM Asia/Shanghai daily)
     schedule: "0 9 * * *"
+    # Which command to execute
     command: research
+    # Chat/Channel ID for notifications
+    # - For Telegram: numeric chat ID (e.g., 123456789)
+    # - For Discord: channel ID (e.g., "123456789012345678")
     chatId: 123456789
+    # Enable or disable this cron task
     enabled: true
+
+# =============================================================================
+# Getting Platform Tokens
+# =============================================================================
+
+# Telegram Bot Token:
+# 1. Open https://t.me/botfather
+# 2. Send /newbot and follow instructions
+# 3. Copy the token
+
+# Discord Bot Token:
+# 1. Go to https://discord.com/developers/applications
+# 2. Create a new application
+# 3. Navigate to "Bot" section
+# 4. Click "Add Bot"
+# 5. Enable "Message Content Intent" under Privileged Gateway Intents
+# 6. Copy the token
+# 7. Invite bot using: 
+#    https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=2048&scope=bot

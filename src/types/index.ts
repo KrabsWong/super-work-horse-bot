@@ -1,8 +1,6 @@
-import type { Context, Telegraf, Telegram } from 'telegraf';
+import type { Context, Telegraf } from 'telegraf';
+import type { PlatformsConfig, MessengerClient } from '../messenger/types';
 
-/**
- * CLI tool type
- */
 export type CliType = 'opencode' | 'claude';
 
 /**
@@ -41,16 +39,12 @@ export interface CronTaskConfig {
   enabled: boolean;
 }
 
-/**
- * Application configuration
- */
 export interface Config {
-  telegramBotToken: string;
   logLevel: string;
-  /** Base directory for git worktrees. Defaults to parent of repo dir if not set */
   worktreeBaseDir?: string;
   commands: Record<string, CommandConfig>;
   cronTasks: Record<string, CronTaskConfig>;
+  platforms: PlatformsConfig;
 }
 
 /**
@@ -58,10 +52,7 @@ export interface Config {
  */
 export type BotInstance = Telegraf;
 
-/**
- * Telegram API client type (for sending messages)
- */
-export type TelegramClient = Telegram | Telegraf['telegram'];
+export type { MessengerClient } from '../messenger/types';
 
 /**
  * Result of command execution
@@ -86,8 +77,8 @@ export interface ValidationResult {
 export interface ExecutionContext {
   userId?: number;
   username?: string;
-  chatId?: number;
-  telegram?: TelegramClient;
+  chatId?: number | string;
+  messenger?: MessengerClient;
   enableMonitoring?: boolean;
 }
 
@@ -170,9 +161,9 @@ export interface Task {
   /** Username who created the task */
   username?: string;
   /** Chat ID for notifications */
-  chatId?: number;
-  /** Telegram message ID for status updates (used for editing) */
-  messageId?: number;
+  chatId?: number | string;
+  /** Message ID for status updates (used for editing) */
+  messageId?: number | string;
   /** Error message if failed */
   error?: string;
 }

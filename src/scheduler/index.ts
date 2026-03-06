@@ -1,5 +1,5 @@
 import { Cron } from 'croner';
-import type { BotInstance } from '../types';
+import type { MessengerClient } from '../messenger/types';
 import { config } from '../config';
 import { startMonitoring } from '../monitor';
 import { sendTaskMessage, type TaskMessageData } from '../messenger';
@@ -24,7 +24,7 @@ async function fetchGitHubTrendingRepos(): Promise<GitHubRepo[]> {
       {
         headers: {
           Accept: 'application/vnd.github.v3+json',
-          'User-Agent': 'Telegram-Bot-Cron-Task',
+          'User-Agent': 'VibeCodingBot-Cron-Task',
         },
       }
     );
@@ -129,8 +129,8 @@ async function generateResearchPrompt(): Promise<string> {
 async function executeCronTask(
   taskName: string,
   commandName: string,
-  bot: BotInstance,
-  chatId: number
+  messenger: MessengerClient,
+  chatId: string
 ): Promise<void> {
   const timestamp = new Date().toISOString();
 
@@ -145,7 +145,7 @@ async function executeCronTask(
       chatId,
       userId: 0,
       username: `cron:${taskName}`,
-      telegram: bot.telegram,
+      messenger,
       enableMonitoring: true,
     };
 
@@ -165,7 +165,7 @@ async function executeCronTask(
           duration: 0,
         };
 
-        const messageId = await sendTaskMessage(bot.telegram, chatId, messageData);
+        const messageId = await sendTaskMessage(messenger, chatId, messageData);
         if (messageId) {
           task.messageId = messageId;
         }
@@ -174,7 +174,7 @@ async function executeCronTask(
           taskId: taskResult.taskId,
           sessionName: taskResult.sessionName,
           statusFile: task.statusFile,
-          telegram: bot.telegram,
+          messenger,
           chatId,
           taskName: `定时任务: ${taskName}`,
           branchName: taskResult.branchName,
@@ -189,7 +189,7 @@ async function executeCronTask(
         });
       }
     } else if (taskResult.status === 'queued') {
-      await bot.telegram.sendMessage(
+      await messenger.sendMessage(
         chatId,
         `⏳ 定时任务已排队\n\n任务: ${taskName}\n任务ID: ${taskResult.taskId}\n队列位置: ${taskResult.queuePosition}`
       );
@@ -198,7 +198,7 @@ async function executeCronTask(
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error(`Cron task '${taskName}' error:`, errorMessage);
     try {
-      await bot.telegram.sendMessage(
+      await messenger.sendMessage(
         chatId,
         `❌ 定时任务异常\n\n任务: ${taskName}\n错误: ${errorMessage}`
       );
@@ -210,7 +210,12 @@ async function executeCronTask(
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 }
 
-export function initializeCronTasks(bot: BotInstance): Cron[] {
+export interface CronTaskConfig {
+  messenger: MessengerClient;
+  chatId: string;
+}
+
+export function initializeCronTasks(cronConfig: CronTaskConfig): Cron[] {
   const scheduledJobs: Cron[] = [];
   const taskNames = Object.keys(config.cronTasks);
 
@@ -221,6 +226,8 @@ export function initializeCronTasks(bot: BotInstance): Cron[] {
 
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('Initializing cron tasks...');
+
+  const { messenger, chatId } = cronConfig;
 
   for (const taskName of taskNames) {
     const taskConfig = config.cronTasks[taskName];
@@ -237,8 +244,8 @@ export function initializeCronTasks(bot: BotInstance): Cron[] {
           await executeCronTask(
             taskName,
             taskConfig.commandName,
-            bot,
-            taskConfig.chatId
+            messenger,
+            chatId
           );
         },
         {
@@ -254,7 +261,7 @@ export function initializeCronTasks(bot: BotInstance): Cron[] {
       console.log(`  Schedule: ${taskConfig.schedule}`);
       console.log(`  Command: ${taskConfig.commandName}`);
       console.log(`  Session: ${taskConfig.session}`);
-      console.log(`  Chat ID: ${taskConfig.chatId}`);
+      console.log(`  Chat ID: ${chatId}`);
       console.log(`  Next run: ${nextRun ? nextRun.toLocaleString('zh-CN') : 'N/A'}`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

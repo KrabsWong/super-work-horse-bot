@@ -58,7 +58,7 @@ export async function executeCommand(
   context: ExecutionContext = {}
 ): Promise<CommandExecuteResult> {
   const timestamp = new Date().toISOString();
-  const enableMonitoring = (context.enableMonitoring !== false) && !!context.telegram && !!context.chatId;
+  const enableMonitoring = (context.enableMonitoring !== false) && !!context.messenger && !!context.chatId;
   
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(`[${timestamp}] Command execution requested`);
@@ -99,9 +99,9 @@ export async function executeCommand(
       console.log(`  Queue position: ${taskResult.queuePosition}`);
     }
     
-    let messageId: number | null = null;
+    let messageId: string | null = null;
     
-    if (context.telegram && context.chatId) {
+    if (context.messenger && context.chatId) {
       const task = taskManager.getTask(taskResult.taskId);
       if (task) {
         const messageData: TaskMessageData = {
@@ -115,7 +115,7 @@ export async function executeCommand(
           startedAt: task.startedAt,
         };
         
-        messageId = await sendTaskMessage(context.telegram, context.chatId, messageData);
+        messageId = await sendTaskMessage(context.messenger, String(context.chatId), messageData);
         
         if (messageId) {
           task.messageId = messageId;
@@ -124,14 +124,14 @@ export async function executeCommand(
       }
     }
     
-    if (enableMonitoring && context.telegram && context.chatId && taskResult.status === 'running') {
+    if (enableMonitoring && context.messenger && context.chatId && taskResult.status === 'running') {
       const task = taskManager.getTask(taskResult.taskId);
       if (task) {
         startMonitoring({
           taskId: taskResult.taskId,
           sessionName: taskResult.sessionName,
           statusFile: task.statusFile,
-          telegram: context.telegram,
+          messenger: context.messenger,
           chatId: context.chatId,
           taskName: `/${commandName}`,
           branchName: taskResult.branchName,

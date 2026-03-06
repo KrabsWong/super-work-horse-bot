@@ -1,4 +1,5 @@
 import type { Config, CommandConfig, CronTaskConfig, CliType } from '../types';
+import type { PlatformsConfig } from '../messenger/types';
 
 const DEFAULT_MAX_CONCURRENT = 3;
 import yaml from 'js-yaml';
@@ -28,12 +29,22 @@ interface RawCronTaskConfig {
   enabled?: boolean;
 }
 
+interface RawPlatformConfig {
+  token: string;
+}
+
+interface RawPlatformsConfig {
+  activePlatform?: 'telegram' | 'discord';
+  telegram?: RawPlatformConfig;
+  discord?: RawPlatformConfig;
+}
+
 interface YamlConfig {
-  telegramBotToken: string;
   logLevel?: string;
   worktreeBaseDir?: string;
   commands: RawCommandConfig[];
   cronTasks?: RawCronTaskConfig[];
+  platforms?: RawPlatformsConfig;
 }
 
 const validCliTypes: CliType[] = ['opencode', 'claude'];
@@ -159,10 +170,6 @@ async function loadConfigFromYaml(configPath: string): Promise<Config> {
       throw new Error(`Invalid YAML structure in ${configPath}`);
     }
 
-    if (!parsed.telegramBotToken) {
-      throw new Error(`Missing required field 'telegramBotToken' in ${configPath}`);
-    }
-
     if (!parsed.commands || !Array.isArray(parsed.commands) || parsed.commands.length === 0) {
       throw new Error(`Missing or empty 'commands' array in ${configPath}`);
     }
@@ -196,18 +203,45 @@ async function loadConfigFromYaml(configPath: string): Promise<Config> {
       }
     }
 
+    const platforms = normalizePlatformsConfig(parsed);
+
+    const activeToken = platforms.activePlatform === 'telegram' 
+      ? platforms.telegram.token 
+      : platforms.discord.token;
+    
+    if (!activeToken) {
+      throw new Error(`${platforms.activePlatform} token is required in config.yaml`);
+    }
+
     return {
-      telegramBotToken: parsed.telegramBotToken,
       logLevel: parsed.logLevel || 'info',
       worktreeBaseDir: parsed.worktreeBaseDir,
       commands,
       cronTasks,
+      platforms,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error(`ERROR: Failed to load configuration: ${message}`);
     throw error;
   }
+}
+
+function normalizePlatformsConfig(parsed: YamlConfig): PlatformsConfig {
+  const telegram = parsed.platforms?.telegram || { token: '' };
+  const discord = parsed.platforms?.discord || { token: '' };
+  const activePlatform = parsed.platforms?.activePlatform || 'telegram';
+
+  console.log(`Active platform: ${activePlatform}`);
+  
+  if (!telegram.token && activePlatform === 'telegram') {
+    console.warn('Warning: Telegram is active but no token configured');
+  }
+  if (!discord.token && activePlatform === 'discord') {
+    console.warn('Warning: Discord is active but no token configured');
+  }
+
+  return { activePlatform, telegram, discord };
 }
 
 let configCache: Config | null = null;
@@ -223,10 +257,14 @@ export async function loadConfiguration(configPath?: string): Promise<Config> {
 }
 
 export const config: Config = {
-  telegramBotToken: '',
   logLevel: 'info',
   commands: {},
   cronTasks: {},
+  platforms: {
+    activePlatform: 'telegram',
+    telegram: { token: '' },
+    discord: { token: '' },
+  },
 };
 
 export async function initializeConfig(configPath?: string): Promise<void> {
@@ -235,18 +273,19 @@ export async function initializeConfig(configPath?: string): Promise<void> {
 }
 
 export function validateConfig(): void {
-  if (!config.telegramBotToken) {
-    console.error('ERROR: telegramBotToken is required in config.yaml');
+  const { activePlatform, telegram, discord } = config.platforms;
+  const activeToken = activePlatform === 'telegram' ? telegram.token : discord.token;
+  
+  if (!activeToken) {
+    console.error(`ERROR: ${activePlatform} token is not configured in config.yaml`);
     console.error('');
-    console.error('Please create a config.yaml file:');
-    console.error('');
-    console.error('telegramBotToken: your_bot_token_here');
-    console.error('commands:');
-    console.error('  - name: research');
-    console.error('    dir: ~/workspace/research');
-    console.error('    prompt: /opsx:propose');
-    console.error('    session: research-bot');
-    console.error('    model: opencode/glm-4.7-free');
+    console.error('Example configuration:');
+    console.error('platforms:');
+    console.error('  activePlatform: telegram');
+    console.error('  telegram:');
+    console.error('    token: your_telegram_bot_token');
+    console.error('  discord:');
+    console.error('    token: your_discord_bot_token');
     process.exit(1);
   }
 

@@ -250,3 +250,47 @@ Contributions are welcome! Please follow the OpenSpec workflow defined in `opens
 ## License
 
 MIT
+## Discord Support
+
+This bot now supports both Telegram and Discord platforms!
+
+### Configuration
+
+#### Option 1: Telegram Only (Backward Compatible)
+
+```yaml
+telegramBotToken: your_telegram_bot_token
+```
+
+#### Option 2: Multi-Platform
+
+```yaml
+platforms:
+  telegram:
+    enabled: true
+    token: your_telegram_bot_token
+  discord:
+    enabled: true
+    token: your_discord_bot_token
+```
+
+### Getting Discord Bot Token
+
+1. Go to [Discord Developer Portal](https://discord.com/developers/applications)
+2. Create a new application
+3. Navigate to "Bot" section
+4. Click "Add Bot"
+5. Copy the token
+6. Enable "Message Content Intent" under "Privileged Gateway Intents"
+7. Invite the bot to your server using the OAuth2 URL generator
+
+### Architecture
+
+The bot now uses a platform abstraction layer:
+
+- `src/messenger/types.ts` - Platform-agnostic interfaces
+- `src/messenger/manager.ts` - Multi-platform manager
+- `src/messenger/telegram/` - Telegram implementation
+- `src/messenger/discord/` - Discord implementation
+
+All commands work identically on both platforms!

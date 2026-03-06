@@ -14,7 +14,7 @@ export interface TaskQueueItem {
   context: {
     userId?: number;
     username?: string;
-    chatId?: number;
+    chatId?: number | string;
     dir: string;
   };
   createdAt: number;
