@@ -69,7 +69,7 @@ export async function createWorktree(
   return { worktreePath, branchName };
 }
 
-export async function removeWorktree(worktreePath: string, baseDir: string): Promise<boolean> {
+export async function removeWorktree(worktreePath: string, baseDir: string, branchName?: string): Promise<boolean> {
   const { exitCode, stderr } = await execGitCommand(
     ['worktree', 'remove', worktreePath, '--force'],
     baseDir
@@ -81,6 +81,20 @@ export async function removeWorktree(worktreePath: string, baseDir: string): Pro
   }
   
   console.log(`Removed worktree: ${worktreePath}`);
+  
+  if (branchName) {
+    const { exitCode: branchExitCode } = await execGitCommand(
+      ['branch', '-D', branchName],
+      baseDir
+    );
+    
+    if (branchExitCode === 0) {
+      console.log(`Deleted branch: ${branchName}`);
+    } else {
+      console.log(`Branch ${branchName} may not exist or already deleted`);
+    }
+  }
+  
   return true;
 }
 

@@ -215,7 +215,7 @@ IMPORTANT INSTRUCTIONS:
     }
 
     if (task.worktreePath) {
-      await removeWorktree(task.worktreePath, cmdConfig.dir);
+      await removeWorktree(task.worktreePath, cmdConfig.dir, task.branchName);
     }
 
     slotManager.releaseSlot(taskId);
@@ -247,7 +247,7 @@ IMPORTANT INSTRUCTIONS:
 
     const cmdConfig = config.commands[task.commandName];
     if (task.worktreePath && cmdConfig) {
-      await removeWorktree(task.worktreePath, cmdConfig.dir);
+      await removeWorktree(task.worktreePath, cmdConfig.dir, task.branchName);
     }
 
     const slotManager = this.slotManagers.get(task.commandName)!;
