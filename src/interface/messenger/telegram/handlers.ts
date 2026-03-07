@@ -1,7 +1,6 @@
 import type { CommandContext } from '../types';
 import { executeCommand } from '../../commands/executor';
 import { config } from '../../../config';
-import { sendCtrlC } from '../../../infra/tmux/session';
 import { taskManager } from '../../../core/task-manager';
 
 interface PlatformContext {
@@ -24,7 +23,6 @@ export async function handleStart(ctx: PlatformContext): Promise<void> {
     `▶️ /run <command> <text> - 执行指定命令\n` +
     `📋 /jobs - 查看运行中/排队的任务\n` +
     `⏰ /cron - 查看定时任务列表\n` +
-    `⏹️ /finish - 终止运行中的进程\n` +
     `❓ /help - 显示帮助信息\n\n` +
     `━━━━━━━━━━━━━━━━━━\n` +
     `🔧 Configured Commands\n` +
@@ -59,14 +57,12 @@ export async function handleHelp(ctx: PlatformContext): Promise<void> {
     `   任务管理\n` +
     `   • /jobs list        - 查看运行中/排队的任务\n` +
     `   • /jobs show <id>   - 查看任务详情\n` +
-    `   • /jobs stop <id>   - 取消排队中的任务\n\n` +
+    `   • /jobs stop <id>   - 停止运行中/取消排队中的任务\n\n` +
     `⏰ /cron [list|run|show]\n` +
     `   定时任务管理\n` +
     `   • /cron list           - 查看定时任务列表\n` +
     `   • /cron show <name>    - 查看任务详情\n` +
     `   • /cron run <name>     - 手动触发任务\n\n` +
-    `⏹️ /finish\n` +
-    `   终止运行中的 opencode 进程\n\n` +
     `❓ /help\n` +
     `   显示此帮助信息\n\n` +
     `🏠 /start\n` +
@@ -176,7 +172,7 @@ export async function handleCancel(ctx: PlatformContext): Promise<void> {
     await ctx.reply(
       `❌ 无法取消运行中的任务\n\n` +
       `任务 ${taskId} 正在运行中，无法取消。\n` +
-      `请使用 /finish 命令停止当前任务。`
+      `请使用 /jobs stop ${taskId} 命令停止当前任务。`
     );
     return;
   }
@@ -193,42 +189,6 @@ export async function handleCancel(ctx: PlatformContext): Promise<void> {
       `❌ 取消任务失败\n\n` +
       `任务 ID: ${taskId}`
     );
-  }
-}
-
-export async function handleFinish(ctx: PlatformContext): Promise<void> {
-  const runningTasks = taskManager.getRunningTasks();
-  
-  if (runningTasks.length === 0) {
-    await ctx.reply('❌ 没有运行中的任务');
-    return;
-  }
-  
-  await ctx.reply(`正在停止 ${runningTasks.length} 个运行中的任务... ⏳`);
-  
-  let stopped = 0;
-  let failed = 0;
-  
-  for (const task of runningTasks) {
-    const cmdConfig = config.commands[task.commandName];
-    if (!cmdConfig) continue;
-    
-    const sessionName = `${cmdConfig.session}-${task.id}`;
-    const success = await sendCtrlC(sessionName);
-    
-    if (success) {
-      stopped++;
-      console.log(`[Finish] Stopped task ${task.id} in session ${sessionName}`);
-    } else {
-      failed++;
-      console.log(`[Finish] Failed to stop task ${task.id} in session ${sessionName}`);
-    }
-  }
-  
-  if (failed === 0) {
-    await ctx.reply(`✅ 已停止 ${stopped} 个任务`);
-  } else {
-    await ctx.reply(`⚠️ 停止完成: ${stopped} 成功, ${failed} 失败`);
   }
 }
 

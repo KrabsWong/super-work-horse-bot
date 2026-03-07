@@ -3,7 +3,6 @@ import { checkTmuxAvailability } from './infra/tmux/session';
 import {
   handleStart,
   handleHelp,
-  handleFinish,
   handleUnknown,
   createCommandHandler,
 } from './interface/messenger/telegram/handlers';
@@ -74,12 +73,6 @@ async function main(): Promise<void> {
   
   messengerManager.onCommand('cron', handleCron);
   console.log('Registered command handler: /cron');
-
-  messengerManager.onCommand('finish', async (ctx) => {
-    const reply = (msg: string) => ctx.messenger.sendMessage(ctx.chatId, msg);
-    await handleFinish({ ...ctx, reply } as any);
-  });
-  console.log('Registered command handler: /finish');
 
   for (const commandName of commandNames) {
     messengerManager.onCommand(commandName, createCommandHandler(commandName));

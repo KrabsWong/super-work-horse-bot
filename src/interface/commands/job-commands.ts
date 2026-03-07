@@ -1,6 +1,8 @@
 import type { CommandContext } from "../../interface/messenger/types";
 import { taskManager } from "../../core/task-manager";
 import { TaskStatus } from "../../types";
+import { sendCtrlC } from "../../infra/tmux/session";
+import { config } from "../../config";
 
 export async function handleJobsList(ctx: CommandContext): Promise<void> {
   const runningTasks = taskManager.getRunningTasks();
@@ -77,26 +79,53 @@ export async function handleJobsStop(ctx: CommandContext): Promise<void> {
   }
 
   if (task.status === TaskStatus.RUNNING) {
-    await ctx.messenger.sendMessage(
-      ctx.chatId,
-      `⚠️ 无法停止正在运行的任务\n\n任务ID: ${taskId}\n请等待任务完成或手动终止 tmux 会话: ${task.sessionName}`,
-    );
+    const cmdConfig = config.commands[task.commandName];
+    if (!cmdConfig) {
+      await ctx.messenger.sendMessage(
+        ctx.chatId,
+        `❌ 无法停止任务\n\n任务ID: ${taskId}\n错误: 未找到命令配置`,
+      );
+      return;
+    }
+
+    const sessionName = `${cmdConfig.session}-${task.id}`;
+    const success = await sendCtrlC(sessionName);
+
+    if (success) {
+      await ctx.messenger.sendMessage(
+        ctx.chatId,
+        `✅ 任务已停止\n\n任务ID: ${taskId}\n命令: /${task.commandName}\n会话: ${sessionName}`,
+      );
+    } else {
+      await ctx.messenger.sendMessage(
+        ctx.chatId,
+        `❌ 停止任务失败\n\n任务ID: ${taskId}\n会话: ${sessionName}\n请手动终止 tmux 会话`,
+      );
+    }
     return;
   }
 
-  const cancelled = taskManager.cancelTask(taskId);
+  if (task.status === TaskStatus.PENDING) {
+    const cancelled = taskManager.cancelTask(taskId);
 
-  if (cancelled) {
-    await ctx.messenger.sendMessage(
-      ctx.chatId,
-      `✅ 任务已取消\n\n任务ID: ${taskId}\n命令: /${task.commandName}`,
-    );
-  } else {
-    await ctx.messenger.sendMessage(
-      ctx.chatId,
-      `❌ 无法取消任务\n\n任务ID: ${taskId}\n状态: ${task.status}`,
-    );
+    if (cancelled) {
+      await ctx.messenger.sendMessage(
+        ctx.chatId,
+        `✅ 任务已取消\n\n任务ID: ${taskId}\n命令: /${task.commandName}`,
+      );
+    } else {
+      await ctx.messenger.sendMessage(
+        ctx.chatId,
+        `❌ 无法取消任务\n\n任务ID: ${taskId}\n状态: ${task.status}`,
+      );
+    }
+    return;
   }
+
+  await ctx.messenger.sendMessage(
+    ctx.chatId,
+    `⚠️ 任务无法停止\n\n任务ID: ${taskId}\n状态: ${formatStatus(task.status)}\n只能停止运行中或排队中的任务`,
+  );
 }
 
 export async function handleJobsShow(ctx: CommandContext): Promise<void> {
@@ -201,6 +230,6 @@ export async function handleJobs(ctx: CommandContext): Promise<void> {
 
   await ctx.messenger.sendMessage(
     ctx.chatId,
-    `❌ 未知的子命令: ${args}\n\n用法:\n  /jobs - 查看任务列表\n  /jobs show <id> - 查看任务详情\n  /jobs stop <id> - 取消任务`,
+    `❌ 未知的子命令: ${args}\n\n用法:\n  /jobs - 查看任务列表\n  /jobs show <id> - 查看任务详情\n  /jobs stop <id> - 停止/取消任务`,
   );
 }

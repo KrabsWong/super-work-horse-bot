@@ -87,8 +87,7 @@ Telegram bot server that enables remote execution of AI coding workflows (via `o
 
 - `/jobs` - List all running and queued tasks
 - `/jobs show <taskId>` - View detailed task information
-- `/jobs stop <taskId>` - Cancel a queued task
-- `/finish` - Stop all running tasks gracefully
+- `/jobs stop <taskId>` - Stop a running task or cancel a queued task
 
 ### Admin Workflow (Cron)
 

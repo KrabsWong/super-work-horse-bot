@@ -10,7 +10,7 @@ A Telegram bot server that receives slash commands and executes server-side AI c
 - **tmux Session Management** - Each command has its own tmux session (creates when needed, reuses when exists)
 - **Scheduled Tasks (Cron)** - Configure automatic execution using cron syntax
 - **Task Monitoring** - Automatic tracking of task completion with timeout protection (1 hour max)
-- **Graceful Process Control** - `/finish` command to stop running opencode processes
+- **Graceful Process Control** - `/jobs stop` command to stop running tasks or cancel queued tasks
 - **Today in History Integration** - Smart research topic generation based on historical events
 
 ## Prerequisites
@@ -99,13 +99,12 @@ Once the bot is running, you can interact with it on Telegram:
 **System Commands:**
 - `/start` - Show welcome message
 - `/help` - Display help information
-- `/finish` - Stop the running opencode process
 - `/run <command> <text>` - Execute specified command (or default command)
 
 **Task Management:**
 - `/jobs` - List running and queued tasks
 - `/jobs show <taskId>` - Show task details
-- `/jobs stop <taskId>` - Cancel a queued task
+- `/jobs stop <taskId>` - Stop a running task or cancel a queued task
 
 **Cron Task Management:**
 - `/cron` - List scheduled cron tasks
