@@ -1,4 +1,4 @@
-import type { TaskId } from '../types';
+import type { TaskId } from '../../types';
 import os from 'os';
 
 function expandPath(path: string): string {

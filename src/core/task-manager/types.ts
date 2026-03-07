@@ -5,7 +5,7 @@ export {
   type TaskManagerConfig,
   type TaskResult,
   TaskStatus,
-} from '../types';
+} from '../../types';
 
 export interface TaskQueueItem {
   taskId: TaskId;
@@ -20,4 +20,4 @@ export interface TaskQueueItem {
   createdAt: number;
 }
 
-import type { TaskId } from '../types';
+import type { TaskId } from '../../types';

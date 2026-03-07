@@ -1,4 +1,4 @@
-import type { CliConfig, CliType } from '../types';
+import type { CliConfig, CliType } from '../../types';
 
 /**
  * Build opencode CLI command

@@ -1,5 +1,5 @@
 import type { Config, CommandConfig, CronTaskConfig, CliType } from '../types';
-import type { PlatformsConfig } from '../messenger/types';
+import type { PlatformsConfig } from '../interface/messenger/types';
 
 const DEFAULT_MAX_CONCURRENT = 3;
 import yaml from 'js-yaml';

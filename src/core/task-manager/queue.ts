@@ -1,4 +1,4 @@
-import type { TaskId } from '../types';
+import type { TaskId } from '../../types';
 import type { TaskQueueItem } from './types';
 
 export class TaskQueue {

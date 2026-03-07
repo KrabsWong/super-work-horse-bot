@@ -1,5 +1,5 @@
 import type { Context, Telegraf } from 'telegraf';
-import type { PlatformsConfig, MessengerClient } from '../messenger/types';
+import type { PlatformsConfig, MessengerClient } from '../interface/messenger/types';
 
 export type CliType = 'opencode' | 'claude';
 
@@ -52,7 +52,7 @@ export interface Config {
  */
 export type BotInstance = Telegraf;
 
-export type { MessengerClient } from '../messenger/types';
+export type { MessengerClient } from '../interface/messenger/types';
 
 /**
  * Result of command execution

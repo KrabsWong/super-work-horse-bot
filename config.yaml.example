@@ -52,21 +52,31 @@ commands:
   #   maxConcurrent: 2
 
 # =============================================================================
-# Cron Tasks (Scheduled Tasks)
+# Scheduled Tasks (Cron Tasks)
 # =============================================================================
-
-cronTasks:
-  - name: daily-research
-    # Cron expression (this runs at 9:00 AM Asia/Shanghai daily)
-    schedule: "0 9 * * *"
-    # Which command to execute
-    command: research
-    # Chat/Channel ID for notifications
-    # - For Telegram: numeric chat ID (e.g., 123456789)
-    # - For Discord: channel ID (e.g., "123456789012345678")
-    chatId: 123456789
-    # Enable or disable this cron task
-    enabled: true
+#
+# Scheduled tasks are now configured via Markdown files in the cron/ directory.
+# Each .md file represents a scheduled task with YAML frontmatter.
+#
+# Example cron/daily-research.md:
+# ---
+# name: daily-research
+# schedule: 每天 09:00
+# messenger: telegram
+# enabled: true
+# ---
+#
+# 每天早上9点，从 GitHub trending 中选择一个热门项目，
+# 进行深入研究分析，生成研究报告。
+#
+# Supported schedule formats:
+# - "每天 HH:MM" - Every day at specific time
+# - "每周一 HH:MM" - Every Monday
+# - "工作日 HH:MM" - Weekdays only (Mon-Fri)
+# - "每周末 HH:MM" - Weekends only
+# - "每小时" - Every hour
+# - "每N小时" - Every N hours
+# - Standard cron expression: "0 9 * * *"
 
 # =============================================================================
 # Getting Platform Tokens

@@ -1,4 +1,4 @@
-import type { TaskId, Slot } from '../types';
+import type { TaskId, Slot } from '../../types';
 
 export class SlotManager {
   private maxSlots: number;

@@ -1,19 +1,18 @@
 import { config, validateConfig, initializeConfig } from './config';
-import { checkTmuxAvailability } from './tmux/session';
+import { checkTmuxAvailability } from './infra/tmux/session';
 import {
   handleStart,
   handleHelp,
-  handleFinish,
-  createCommandHandler,
   handleUnknown,
-  handleStatus,
-  handleCancel,
-} from './messenger/telegram/handlers';
-import { initializeCronTasks, stopCronJobs } from './scheduler';
-import { taskManager } from './task-manager';
-import { stopAllMonitors } from './monitor';
-import { MessengerManager, TelegramMessenger, DiscordMessenger } from './messenger';
-import type { Cron } from 'croner';
+  createCommandHandler,
+} from './interface/messenger/telegram/handlers';
+import { handleJobs } from './interface/commands/job-commands';
+import { handleCron } from './interface/commands/cron-commands';
+import { handleRun } from './interface/commands/run-command';
+import { scheduler } from './core/scheduler';
+import { taskManager } from './core/task-manager';
+import { stopAllMonitors } from './infra/monitor';
+import { MessengerManager, TelegramMessenger, DiscordMessenger } from './interface/messenger';
 
 async function main(): Promise<void> {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -66,20 +65,14 @@ async function main(): Promise<void> {
     await handleHelp({ ...ctx, reply } as any);
   });
   
-  messengerManager.onCommand('finish', async (ctx) => {
-    const reply = (msg: string) => ctx.messenger.sendMessage(ctx.chatId, msg);
-    await handleFinish({ ...ctx, reply } as any);
-  });
+  messengerManager.onCommand('run', handleRun);
+  console.log('Registered command handler: /run');
   
-  messengerManager.onCommand('status', async (ctx) => {
-    const reply = (msg: string) => ctx.messenger.sendMessage(ctx.chatId, msg);
-    await handleStatus({ ...ctx, reply } as any);
-  });
+  messengerManager.onCommand('jobs', handleJobs);
+  console.log('Registered command handler: /jobs');
   
-  messengerManager.onCommand('cancel', async (ctx) => {
-    const reply = (msg: string) => ctx.messenger.sendMessage(ctx.chatId, msg);
-    await handleCancel({ ...ctx, reply } as any);
-  });
+  messengerManager.onCommand('cron', handleCron);
+  console.log('Registered command handler: /cron');
 
   for (const commandName of commandNames) {
     messengerManager.onCommand(commandName, createCommandHandler(commandName));
@@ -91,22 +84,25 @@ async function main(): Promise<void> {
     await handleUnknown({ ...ctx, reply } as any);
   });
 
-  let cronJobs: Cron[] = [];
   try {
     const activeMessenger = messengerManager.getPlatform(config.platforms.activePlatform);
     
     if (activeMessenger) {
       const taskNames = Object.keys(config.cronTasks);
+      let defaultChatId = '0';
       if (taskNames.length > 0) {
         const firstTask = config.cronTasks[taskNames[0]];
-        cronJobs = initializeCronTasks({
-          messenger: activeMessenger,
-          chatId: String(firstTask.chatId),
-        });
+        defaultChatId = String(firstTask.chatId);
       }
+      
+      await scheduler.initialize({
+        messenger: activeMessenger,
+        chatId: defaultChatId,
+        cronDir: './cron',
+      });
     }
   } catch (error) {
-    console.error('Failed to initialize cron tasks:', error);
+    console.error('Failed to initialize scheduler:', error);
   }
 
   console.log('Starting bot platforms...');
@@ -128,7 +124,7 @@ async function main(): Promise<void> {
   process.once('SIGINT', () => {
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('Received SIGINT, stopping bot...');
-    stopCronJobs(cronJobs);
+    scheduler.stop();
     stopAllMonitors();
     taskManager.cleanup();
     messengerManager.stopAll();
@@ -137,7 +133,7 @@ async function main(): Promise<void> {
   process.once('SIGTERM', () => {
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('Received SIGTERM, stopping bot...');
-    stopCronJobs(cronJobs);
+    scheduler.stop();
     stopAllMonitors();
     taskManager.cleanup();
     messengerManager.stopAll();
