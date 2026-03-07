@@ -7,7 +7,7 @@ export async function handleJobsList(ctx: CommandContext): Promise<void> {
   const queuedTasks = taskManager.getQueuedTasks();
 
   const lines: string[] = [];
-  lines.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  lines.push("━━━━━━━━━━━━━━━━━━");
   lines.push("📋 任务状态");
   lines.push("━━━━━━━━━━━━━━━━━━");
 
@@ -17,7 +17,7 @@ export async function handleJobsList(ctx: CommandContext): Promise<void> {
     if (runningTasks.length > 0) {
       lines.push("");
       lines.push(`▶️ 运行中 (${runningTasks.length})`);
-      lines.push("────────────────────────────────────────");
+      lines.push("━━━━━━━━━━━━━━━━━━");
       for (const task of runningTasks) {
         const duration = task.startedAt
           ? Math.round((Date.now() - task.startedAt) / 1000)
@@ -52,7 +52,7 @@ export async function handleJobsList(ctx: CommandContext): Promise<void> {
     }
   }
 
-  lines.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  lines.push("━━━━━━━━━━━━━━━━━━");
 
   await ctx.messenger.sendMessage(ctx.chatId, lines.join("\n"));
 }
@@ -119,9 +119,9 @@ export async function handleJobsShow(ctx: CommandContext): Promise<void> {
   }
 
   const lines: string[] = [];
-  lines.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  lines.push("━━━━━━━━━━━━━━━━━━");
   lines.push(`📋 任务详情: ${taskId}`);
-  lines.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  lines.push("━━━━━━━━━━━━━━━━━━");
   lines.push(`命令: /${task.commandName}`);
   lines.push(`状态: ${formatStatus(task.status)}`);
   lines.push(`参数: ${task.args}`);
@@ -160,7 +160,7 @@ export async function handleJobsShow(ctx: CommandContext): Promise<void> {
     lines.push(`错误: ${task.error}`);
   }
 
-  lines.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  lines.push("━━━━━━━━━━━━━━━━━━");
 
   await ctx.messenger.sendMessage(ctx.chatId, lines.join("\n"));
 }

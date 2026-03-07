@@ -5,9 +5,9 @@ export async function handleCronList(ctx: CommandContext): Promise<void> {
   const tasks = scheduler.listTasks();
 
   const lines: string[] = [];
-  lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  lines.push('━━━━━━━━━━━━━━━━━━');
   lines.push('⏰ 定时任务列表');
-  lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  lines.push('━━━━━━━━━━━━━━━━━━');
 
   if (tasks.length === 0) {
     lines.push('暂无定时任务');
@@ -33,7 +33,7 @@ export async function handleCronList(ctx: CommandContext): Promise<void> {
     }
   }
 
-  lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  lines.push('━━━━━━━━━━━━━━━━━━');
 
   await ctx.messenger.sendMessage(ctx.chatId, lines.join('\n'));
 }
@@ -109,9 +109,9 @@ export async function handleCronShow(ctx: CommandContext): Promise<void> {
   }
 
   const lines: string[] = [];
-  lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  lines.push('━━━━━━━━━━━━━━━━━━');
   lines.push(`⏰ 定时任务详情: ${taskName}`);
-  lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  lines.push('━━━━━━━━━━━━━━━━━━');
   lines.push(`状态: ${task.enabled ? '✅ 启用' : '❌ 禁用'}`);
   lines.push(`时间表达式: ${task.config.schedule}`);
   lines.push(`Cron: ${task.config.cronExpression || 'N/A'}`);
@@ -129,9 +129,9 @@ export async function handleCronShow(ctx: CommandContext): Promise<void> {
 
   lines.push('');
   lines.push('任务描述:');
-  lines.push('────────────────────────────────────────');
+  lines.push('━━━━━━━━━━━━━━━━━━');
   lines.push(task.config.description);
-  lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  lines.push('━━━━━━━━━━━━━━━━━━');
 
   await ctx.messenger.sendMessage(ctx.chatId, lines.join('\n'));
 }

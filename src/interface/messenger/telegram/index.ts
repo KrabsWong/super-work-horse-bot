@@ -63,9 +63,7 @@ export class TelegramMessenger implements MessengerPlatform {
 
   async sendMessage(chatId: string, message: string): Promise<MessageResult | null> {
     try {
-      const result = await this.bot.telegram.sendMessage(Number(chatId), message, {
-        parse_mode: 'HTML',
-      });
+      const result = await this.bot.telegram.sendMessage(Number(chatId), message);
       return {
         messageId: String(result.message_id),
         chatId: String(result.chat.id),
