@@ -138,6 +138,20 @@ export async function executeCommand(
           messageId: messageId || undefined,
           args: sanitized,
           startedAt: task.startedAt,
+          onProgress: async (taskId, duration) => {
+            if (messageId && context.messenger && context.chatId) {
+              await updateTaskMessage(context.messenger, String(context.chatId), messageId, {
+                taskId,
+                commandName,
+                args: sanitized,
+                sessionName: taskResult.sessionName,
+                branchName: taskResult.branchName,
+                status: 'running',
+                duration,
+                startedAt: task.startedAt,
+              });
+            }
+          },
           onCompletion: async (taskId, duration, killedCount) => {
             await taskManager.completeTask(taskId);
             if (messageId && context.messenger && context.chatId) {
