@@ -180,19 +180,29 @@ IMPORTANT INSTRUCTIONS:
   }
 
   async completeTask(taskId: TaskId): Promise<void> {
+    console.log(`[TaskManager] ========== COMPLETE TASK START ==========`);
+    console.log(`[TaskManager] Target taskId: ${taskId}`);
+    
     const task = this.tasks.get(taskId);
     if (!task) {
-      console.error(`[TaskManager] Task ${taskId} not found`);
+      console.error(`[TaskManager] Task ${taskId} not found in tasks map`);
+      console.log(`[TaskManager] Current tasks in map:`, Array.from(this.tasks.keys()));
+      console.log(`[TaskManager] ========== COMPLETE TASK END (FAILED) ==========`);
       return;
     }
 
-    console.log(`[TaskManager] completeTask called for ${taskId}`);
-    console.log(`[TaskManager] task.worktreePath: "${task.worktreePath}"`);
-    console.log(`[TaskManager] task.commandName: "${task.commandName}"`);
+    console.log(`[TaskManager] Task found:`);
+    console.log(`[TaskManager]   - taskId: ${task.id}`);
+    console.log(`[TaskManager]   - commandName: ${task.commandName}`);
+    console.log(`[TaskManager]   - worktreePath: "${task.worktreePath}"`);
+    console.log(`[TaskManager]   - branchName: ${task.branchName}`);
+    console.log(`[TaskManager]   - sessionName: ${task.sessionName}`);
+    console.log(`[TaskManager]   - status: ${task.status}`);
 
     const cmdConfig = config.commands[task.commandName];
     if (!cmdConfig) {
       console.error(`[TaskManager] No config found for command: ${task.commandName}`);
+      console.log(`[TaskManager] ========== COMPLETE TASK END (FAILED) ==========`);
       return;
     }
     
@@ -200,46 +210,84 @@ IMPORTANT INSTRUCTIONS:
 
     const slotManager = this.slotManagers.get(task.commandName)!;
     const queue = this.taskQueues.get(task.commandName)!;
+    
+    console.log(`[TaskManager] Current slot status:`);
+    console.log(`[TaskManager]   - Active slots: ${slotManager.getRunningTaskIds().join(', ') || 'none'}`);
+    console.log(`[TaskManager]   - Available slots: ${slotManager.getAvailableSlots()}`);
+    
+    console.log(`[TaskManager] Running tasks before completion:`);
+    const runningTasks = this.getRunningTasks();
+    runningTasks.forEach(t => {
+      console.log(`[TaskManager]   - ${t.id} (branch: ${t.branchName}, worktree: ${t.worktreePath})`);
+    });
 
     task.status = TaskStatus.COMPLETED;
     task.completedAt = Date.now();
 
     try {
       const workDir = task.worktreePath || cmdConfig.dir;
-      console.log(`[TaskManager] Completing task ${taskId}, workDir: ${workDir}`);
+      console.log(`[TaskManager] Checking work dir: ${workDir}`);
       
       const currentBranch = await getCurrentBranch(workDir);
-      console.log(`[TaskManager] Current branch: ${currentBranch}, expected: ${task.branchName}`);
+      console.log(`[TaskManager] Current branch in workDir: ${currentBranch}`);
+      console.log(`[TaskManager] Expected branch: ${task.branchName}`);
+      
+      if (currentBranch !== task.branchName) {
+        console.warn(`[TaskManager] WARNING: Branch mismatch! Current: ${currentBranch}, Expected: ${task.branchName}`);
+      }
     } catch (error) {
       console.error(`[TaskManager] Error checking branch for task ${taskId}:`, error);
     }
 
     if (task.worktreePath) {
+      console.log(`[TaskManager] Proceeding to remove worktree...`);
       await removeWorktree(task.worktreePath, cmdConfig.dir, task.branchName);
+    } else {
+      console.log(`[TaskManager] No worktreePath set, skipping worktree removal`);
     }
 
-    slotManager.releaseSlot(taskId);
+    console.log(`[TaskManager] Releasing slot for ${taskId}...`);
+    const releasedSlot = slotManager.releaseSlot(taskId);
+    console.log(`[TaskManager] Released slot: ${releasedSlot ? 'success' : 'not found'}`);
+    console.log(`[TaskManager] Remaining active slots: ${slotManager.getRunningTaskIds().join(', ') || 'none'}`);
 
     if (this.onTaskCompletion) {
-      console.log(`[TaskManager] Calling onTaskCompletion callback`);
+      console.log(`[TaskManager] Calling onTaskCompletion callback...`);
       await this.onTaskCompletion(task);
     } else {
       console.log(`[TaskManager] No onTaskCompletion callback set`);
     }
 
     if (!queue.isEmpty()) {
+      console.log(`[TaskManager] Queue is not empty, dequeuing next task...`);
       const nextItem = queue.dequeue();
       if (nextItem) {
+        console.log(`[TaskManager] Starting queued task: ${nextItem.taskId}`);
         await this.startQueuedTask(nextItem);
       }
+    } else {
+      console.log(`[TaskManager] Queue is empty`);
     }
+    
+    console.log(`[TaskManager] ========== COMPLETE TASK END ==========`);
   }
 
   async failTask(taskId: TaskId, error: string): Promise<void> {
+    console.log(`[TaskManager] ========== FAIL TASK START ==========`);
+    console.log(`[TaskManager] Target taskId: ${taskId}`);
+    console.log(`[TaskManager] Error: ${error}`);
+    
     const task = this.tasks.get(taskId);
     if (!task) {
+      console.error(`[TaskManager] Task ${taskId} not found in tasks map`);
+      console.log(`[TaskManager] ========== FAIL TASK END (NOT FOUND) ==========`);
       return;
     }
+
+    console.log(`[TaskManager] Task found:`);
+    console.log(`[TaskManager]   - taskId: ${task.id}`);
+    console.log(`[TaskManager]   - worktreePath: "${task.worktreePath}"`);
+    console.log(`[TaskManager]   - branchName: ${task.branchName}`);
 
     task.status = TaskStatus.FAILED;
     task.error = error;
@@ -247,19 +295,26 @@ IMPORTANT INSTRUCTIONS:
 
     const cmdConfig = config.commands[task.commandName];
     if (task.worktreePath && cmdConfig) {
+      console.log(`[TaskManager] Removing worktree for failed task...`);
       await removeWorktree(task.worktreePath, cmdConfig.dir, task.branchName);
     }
 
     const slotManager = this.slotManagers.get(task.commandName)!;
+    console.log(`[TaskManager] Releasing slot for ${taskId}...`);
     slotManager.releaseSlot(taskId);
+    console.log(`[TaskManager] Remaining active slots: ${slotManager.getRunningTaskIds().join(', ') || 'none'}`);
 
     const queue = this.taskQueues.get(task.commandName)!;
     if (!queue.isEmpty()) {
+      console.log(`[TaskManager] Queue is not empty, dequeuing next task...`);
       const nextItem = queue.dequeue();
       if (nextItem) {
+        console.log(`[TaskManager] Starting queued task: ${nextItem.taskId}`);
         await this.startQueuedTask(nextItem);
       }
     }
+    
+    console.log(`[TaskManager] ========== FAIL TASK END ==========`);
   }
 
   private async startQueuedTask(item: TaskQueueItem): Promise<void> {

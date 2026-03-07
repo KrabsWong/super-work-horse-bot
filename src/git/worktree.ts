@@ -9,6 +9,18 @@ function expandPath(p: string): string {
   return p;
 }
 
+/**
+ * 从 worktree 路径中提取 taskId
+ * 路径格式: {parentDir}/{repoName}-{taskId}
+ */
+function extractTaskIdFromPath(worktreePath: string): string | null {
+  const match = worktreePath.match(/-task-\d{8}_\d{6}-[a-z0-9]{4}$/);
+  if (match) {
+    return match[0].substring(1);
+  }
+  return null;
+}
+
 function escapeShellArg(arg: string): string {
   return `'${arg.replace(/'/g, "'\\''")}'`;
 }
@@ -70,30 +82,66 @@ export async function createWorktree(
 }
 
 export async function removeWorktree(worktreePath: string, baseDir: string, branchName?: string): Promise<boolean> {
+  console.log(`[Worktree] ========== REMOVE START ==========`);
+  console.log(`[Worktree] Target worktree: ${worktreePath}`);
+  console.log(`[Worktree] Base dir: ${baseDir}`);
+  console.log(`[Worktree] Branch to delete: ${branchName || 'none'}`);
+  
+  // 防护1: 验证路径格式包含合法的 taskId
+  const taskIdFromPath = extractTaskIdFromPath(worktreePath);
+  if (!taskIdFromPath) {
+    console.error(`[Worktree] REJECTED: Path does not contain valid taskId format: ${worktreePath}`);
+    return false;
+  }
+  console.log(`[Worktree] Extracted taskId from path: ${taskIdFromPath}`);
+  
+  // 防护2: 如果提供了 branchName，验证它与路径中的 taskId 一致
+  if (branchName && branchName !== taskIdFromPath) {
+    console.error(`[Worktree] REJECTED: Branch name mismatch. Path taskId=${taskIdFromPath}, but branchName=${branchName}`);
+    return false;
+  }
+  
+  // 防护3: 验证 worktree 实际存在
+  const worktrees = await listWorktrees(baseDir);
+  console.log(`[Worktree] Current worktrees (${worktrees.length}):`, worktrees);
+  
+  if (!worktrees.includes(worktreePath)) {
+    console.error(`[Worktree] REJECTED: Worktree not found in list: ${worktreePath}`);
+    console.error(`[Worktree] Available worktrees:`, worktrees);
+    return false;
+  }
+  
+  console.log(`[Worktree] Validation passed, proceeding with removal...`);
+  
   const { exitCode, stderr } = await execGitCommand(
     ['worktree', 'remove', worktreePath, '--force'],
     baseDir
   );
   
   if (exitCode !== 0) {
-    console.error(`Failed to remove worktree ${worktreePath}: ${stderr}`);
+    console.error(`[Worktree] FAILED to remove worktree ${worktreePath}: ${stderr}`);
     return false;
   }
   
-  console.log(`Removed worktree: ${worktreePath}`);
+  console.log(`[Worktree] Successfully removed worktree: ${worktreePath}`);
   
   if (branchName) {
-    const { exitCode: branchExitCode } = await execGitCommand(
+    const { exitCode: branchExitCode, stderr: branchStderr } = await execGitCommand(
       ['branch', '-D', branchName],
       baseDir
     );
     
     if (branchExitCode === 0) {
-      console.log(`Deleted branch: ${branchName}`);
+      console.log(`[Worktree] Successfully deleted branch: ${branchName}`);
     } else {
-      console.log(`Branch ${branchName} may not exist or already deleted`);
+      console.log(`[Worktree] Branch deletion skipped (may not exist): ${branchName}. stderr: ${branchStderr}`);
     }
   }
+  
+  // 验证清理后的状态
+  const remainingWorktrees = await listWorktrees(baseDir);
+  console.log(`[Worktree] Remaining worktrees (${remainingWorktrees.length}):`, remainingWorktrees);
+  console.log(`[Worktree] ========== REMOVE END ==========`);
   
   return true;
 }
