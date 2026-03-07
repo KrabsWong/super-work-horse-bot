@@ -5,8 +5,8 @@ import { TaskRegistry, type ScheduledTask } from './registry';
 import { CronWatcher } from '../cron-manager/watcher';
 import { TaskOrchestrator } from '../cron-manager/orchestrator';
 import { TaskReporter } from '../cron-manager/reporter';
-import { TaskPlanner } from '../cron-manager/planner';
 import type { CronTaskConfig } from '../cron-manager/types';
+import { startMonitoring } from '../../infra/monitor';
 
 export { taskRegistry, type ScheduledTask } from './registry';
 
@@ -18,24 +18,16 @@ async function executeMarkdownTask(
 ): Promise<void> {
   const timestamp = new Date().toISOString();
 
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('━━━━━━━━━━━━━━');
   console.log(`[${timestamp}] Markdown cron task '${taskConfig.name}' triggered`);
 
   const startTime = Date.now();
   const messengerClient = registry.getMessengerClient();
-  const chatId = taskConfig.messenger === 'telegram' 
-    ? registry.getDefaultChatId() 
+  const chatId = taskConfig.messenger === 'telegram'
+    ? registry.getDefaultChatId()
     : registry.getDefaultChatId();
 
   try {
-    const planner = new TaskPlanner();
-    const plan = await planner.plan(taskConfig.description);
-
-    const report = reporter.createStartedReport(taskConfig, plan);
-    if (messengerClient && chatId) {
-      await reporter.sendReport(chatId, report);
-    }
-
     const context = {
       chatId,
       userId: 0,
@@ -50,15 +42,75 @@ async function executeMarkdownTask(
       registry.updateLastRun(taskConfig.name);
       console.log(`Markdown task '${taskConfig.name}' started: ${result.taskId}`);
 
-      const completedReport = reporter.createCompletedReport(taskConfig, startTime, result.taskId);
-      if (messengerClient && chatId) {
-        await reporter.sendReport(chatId, completedReport);
+      const task = taskManager.getTask(result.taskId);
+      if (task && messengerClient && chatId) {
+        const startingReport = reporter.createStartingReport(
+          taskConfig,
+          result.plan,
+          result.taskId,
+          task.sessionName,
+          task.branchName
+        );
+        const messageId = await reporter.sendReport(chatId, startingReport);
+
+        if (task.status === 'running') {
+          startMonitoring({
+            taskId: result.taskId,
+            sessionName: task.sessionName,
+            statusFile: task.statusFile,
+            messenger: messengerClient,
+            chatId: chatId,
+            taskName: taskConfig.name,
+            branchName: task.branchName,
+            args: taskConfig.description || '',
+            startedAt: task.startedAt,
+            messageId: messageId || undefined,
+            onProgress: async (taskId, duration) => {
+              const runningReport = reporter.createRunningReport(
+                taskConfig,
+                result.plan,
+                taskId,
+                task.startedAt || Date.now(),
+                task.sessionName,
+                task.branchName
+              );
+              runningReport.duration = duration;
+              await reporter.sendReport(chatId, runningReport);
+            },
+            onCompletion: async (taskId, duration, killedCount) => {
+              await taskManager.completeTask(taskId);
+              const completedReport = reporter.createCompletedReport(
+                taskConfig,
+                task.startedAt || Date.now(),
+                taskId,
+                duration,
+                killedCount,
+                task.sessionName,
+                task.branchName
+              );
+              await reporter.sendReport(chatId, completedReport);
+            },
+            onFailure: async (taskId, reason, duration, killedCount) => {
+              await taskManager.failTask(taskId, `Task ended unexpectedly (${reason})`);
+              const errorReport = reporter.createTimeoutReport(
+                taskConfig,
+                task.startedAt || Date.now(),
+                taskId,
+                duration,
+                killedCount || 0,
+                task.sessionName,
+                task.branchName
+              );
+              await reporter.sendReport(chatId, errorReport);
+            },
+          });
+        }
       }
     } else {
       const error = result.error || 'Unknown error';
       console.error(`Markdown task '${taskConfig.name}' failed: ${error}`);
 
-      const failedReport = reporter.createFailedReport(taskConfig, startTime, error);
+      const failedReport = reporter.createFailedReport(taskConfig, startTime, error, 'unknown', undefined, undefined);
       if (messengerClient && chatId) {
         await reporter.sendReport(chatId, failedReport);
       }
@@ -67,13 +119,13 @@ async function executeMarkdownTask(
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error(`Markdown task '${taskConfig.name}' error:`, errorMessage);
 
-    const failedReport = reporter.createFailedReport(taskConfig, startTime, errorMessage);
+    const failedReport = reporter.createFailedReport(taskConfig, startTime, errorMessage, 'unknown', undefined, undefined);
     if (messengerClient && chatId) {
       await reporter.sendReport(chatId, failedReport);
     }
   }
 
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('━━━━━━━━━━━━━━');
 }
 
 export interface SchedulerConfig {
@@ -100,7 +152,6 @@ export class Scheduler {
 
     this.registry.setMessengerClient(config.messenger);
     this.registry.setDefaultChatId(config.chatId);
-    this.orchestrator.setMessengerClient(config.messenger);
     this.reporter.setMessengerClient(config.messenger);
 
     const cronDir = config.cronDir || './cron';

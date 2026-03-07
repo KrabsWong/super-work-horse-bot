@@ -1,8 +1,7 @@
 import type { MessengerClient, TaskId } from "../../types";
 import { hasOpencodeProcess, killOpencodeInSession, killSession } from "../tmux/session";
-import { updateTaskMessage } from "../../interface/messenger";
 
-const MONITOR_INTERVAL_MS = 60000;
+const MONITOR_INTERVAL_MS = 10000;
 const MAX_MONITOR_DURATION_MS = 60 * 60 * 1000;
 
 interface ActiveMonitor {
@@ -31,6 +30,10 @@ export interface MonitorOptions {
   messageId?: number | string;
   args: string;
   startedAt?: number;
+  onProgress?: (
+    taskId: TaskId,
+    duration: number,
+  ) => Promise<void>;
   onCompletion?: (
     taskId: TaskId,
     duration: number,
@@ -40,6 +43,7 @@ export interface MonitorOptions {
     taskId: TaskId,
     reason: 'timeout' | 'unexpected_exit',
     duration: number,
+    killedCount?: number,
   ) => Promise<void>;
 }
 
@@ -104,13 +108,12 @@ export function startMonitoring(options: MonitorOptions): void {
     taskId,
     sessionName,
     statusFile,
-    messenger,
-    chatId,
     taskName,
     branchName,
     messageId,
     args,
     startedAt,
+    onProgress,
     onCompletion,
     onFailure,
   } = options;
@@ -144,63 +147,19 @@ export function startMonitoring(options: MonitorOptions): void {
       await cleanupStatusFile(statusFile);
       await killSession(sessionName);
 
-      const durationMinutes = Math.round(elapsed / 1000 / 60);
-      const commandName = taskName.replace(/^\//, '');
+      const durationSeconds = Math.round(elapsed / 1000);
 
       if (onFailure) {
         try {
-          await onFailure(taskId, 'timeout', durationMinutes);
+          await onFailure(taskId, 'timeout', durationSeconds, killedCount);
         } catch (cbError) {
           console.error('[Monitor] onFailure callback error (timeout):', cbError);
         }
-      }
-
-      try {
-        if (monitor.messageId) {
-          await updateTaskMessage(messenger, String(chatId), String(monitor.messageId), {
-            taskId,
-            commandName,
-            args: monitor.args,
-            sessionName,
-            branchName,
-            status: 'timeout',
-            duration: durationMinutes,
-            killedCount,
-            startedAt: monitor.startedAt,
-            completedAt: Date.now(),
-          });
-        } else {
-          await messenger.sendMessage(String(chatId),
-            `⏰ 任务超时，已强制停止\n\n任务ID: ${taskId}\n任务: ${taskName}\nSession: ${sessionName}\n分支: ${branchName}\n运行时长: ${durationMinutes} 分钟\n清理进程: ${killedCount} 个\n\n任务执行超过1小时，已强制终止。`
-          );
-        }
-      } catch (error) {
-        console.error("[Monitor] Failed to send timeout notification:", error);
       }
       return;
     }
 
     const statusFileExists = await checkStatusFileExists(statusFile);
-    const hasProcess = await hasOpencodeProcess(sessionName);
-    const durationMinutes = Math.round(elapsed / 1000 / 60);
-
-    if (monitor.messageId && hasProcess) {
-      const commandName = taskName.replace(/^\//, '');
-      try {
-        await updateTaskMessage(messenger, String(chatId), String(monitor.messageId), {
-          taskId,
-          commandName,
-          args: monitor.args,
-          sessionName,
-          branchName,
-          status: 'running',
-          duration: durationMinutes,
-          startedAt: monitor.startedAt,
-        });
-      } catch (error) {
-        console.error("[Monitor] Failed to update progress:", error);
-      }
-    }
 
     if (statusFileExists) {
       console.log(
@@ -214,40 +173,27 @@ export function startMonitoring(options: MonitorOptions): void {
       await cleanupStatusFile(statusFile);
       await killSession(sessionName);
 
-      const durationMinutes2 = Math.round(elapsed / 1000 / 60);
+      const durationSeconds = Math.round(elapsed / 1000);
 
       if (onCompletion) {
-        await onCompletion(taskId, durationMinutes2, killedCount);
-      }
-
-      const commandName = taskName.replace(/^\//, '');
-
-      try {
-        if (monitor.messageId) {
-          await updateTaskMessage(messenger, String(chatId), String(monitor.messageId), {
-            taskId,
-            commandName,
-            args: monitor.args,
-            sessionName,
-            branchName,
-            status: 'completed',
-            duration: durationMinutes2,
-            killedCount,
-            startedAt: monitor.startedAt,
-            completedAt: Date.now(),
-          });
-        } else {
-          await messenger.sendMessage(String(chatId),
-            `✅ 任务执行完成\n\n任务ID: ${taskId}\n任务: ${taskName}\nSession: ${sessionName}\n分支: ${branchName}\n耗时: ${durationMinutes2} 分钟\n清理进程: ${killedCount} 个`
-          );
+        try {
+          await onCompletion(taskId, durationSeconds, killedCount);
+        } catch (cbError) {
+          console.error('[Monitor] onCompletion callback error:', cbError);
         }
-      } catch (error) {
-        console.error(
-          "[Monitor] Failed to send completion notification:",
-          error,
-        );
       }
       return;
+    }
+
+    const hasProcess = await hasOpencodeProcess(sessionName);
+    const durationSeconds2 = Math.round(elapsed / 1000);
+
+    if (hasProcess && onProgress) {
+      try {
+        await onProgress(taskId, durationSeconds2);
+      } catch (error) {
+        console.error("[Monitor] Failed to update progress:", error);
+      }
     }
 
     if (!hasProcess && elapsed > 60000) {
@@ -258,41 +204,14 @@ export function startMonitoring(options: MonitorOptions): void {
       clearInterval(intervalId);
       activeMonitors.delete(taskId);
 
-      const durationMinutes3 = Math.round(elapsed / 1000 / 60);
-      const commandName = taskName.replace(/^\//, '');
+      const durationSeconds3 = Math.round(elapsed / 1000);
 
       if (onFailure) {
         try {
-          await onFailure(taskId, 'unexpected_exit', durationMinutes3);
+          await onFailure(taskId, 'unexpected_exit', durationSeconds3);
         } catch (cbError) {
           console.error('[Monitor] onFailure callback error (unexpected_exit):', cbError);
         }
-      }
-
-      try {
-        if (monitor.messageId) {
-          await updateTaskMessage(messenger, String(chatId), String(monitor.messageId), {
-            taskId,
-            commandName,
-            args: monitor.args,
-            sessionName,
-            branchName,
-            status: 'error',
-            duration: durationMinutes3,
-            error: 'opencode 进程已结束，但未检测到完成标记。可能是任务被中断或出错。',
-            startedAt: monitor.startedAt,
-            completedAt: Date.now(),
-          });
-        } else {
-          await messenger.sendMessage(String(chatId),
-            `⚠️ 任务异常结束\n\n任务ID: ${taskId}\n任务: ${taskName}\nSession: ${sessionName}\n分支: ${branchName}\n耗时: ${durationMinutes3} 分钟\n\nopencode 进程已结束，但未检测到完成标记。可能是任务被中断或出错。`
-          );
-        }
-      } catch (error) {
-        console.error(
-          "[Monitor] Failed to send unexpected end notification:",
-          error,
-        );
       }
     }
   }, MONITOR_INTERVAL_MS);
