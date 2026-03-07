@@ -7,7 +7,7 @@ import {
   createCommandHandler,
 } from './interface/messenger/telegram/handlers';
 import { handleJobs } from './interface/commands/job-commands';
-import { handleCron } from './interface/commands/cron-commands';
+import { handleCron, handleCronCallback } from './interface/commands/cron-commands';
 import { handleRun } from './interface/commands/run-command';
 import { scheduler } from './core/scheduler';
 import { taskManager } from './core/task-manager';
@@ -83,6 +83,9 @@ async function main(): Promise<void> {
     const reply = (msg: string) => ctx.messenger.sendMessage(ctx.chatId, msg);
     await handleUnknown({ ...ctx, reply } as any);
   });
+
+  messengerManager.onCallbackQuery(/^cron:(list|show|run):/, handleCronCallback);
+  console.log('Registered callback query handler: cron actions');
 
   try {
     const activeMessenger = messengerManager.getPlatform(config.platforms.activePlatform);
