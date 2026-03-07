@@ -251,6 +251,9 @@ IMPORTANT INSTRUCTIONS:
     console.log(`[TaskManager] Released slot: ${releasedSlot ? 'success' : 'not found'}`);
     console.log(`[TaskManager] Remaining active slots: ${slotManager.getRunningTaskIds().join(', ') || 'none'}`);
 
+    console.log(`[TaskManager] Cleaning up tmux session for ${taskId}...`);
+    await this.cleanupSession(taskId);
+
     if (this.onTaskCompletion) {
       console.log(`[TaskManager] Calling onTaskCompletion callback...`);
       await this.onTaskCompletion(task);
@@ -303,6 +306,9 @@ IMPORTANT INSTRUCTIONS:
     console.log(`[TaskManager] Releasing slot for ${taskId}...`);
     slotManager.releaseSlot(taskId);
     console.log(`[TaskManager] Remaining active slots: ${slotManager.getRunningTaskIds().join(', ') || 'none'}`);
+
+    console.log(`[TaskManager] Cleaning up tmux session for ${taskId}...`);
+    await this.cleanupSession(taskId);
 
     const queue = this.taskQueues.get(task.commandName)!;
     if (!queue.isEmpty()) {

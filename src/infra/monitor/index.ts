@@ -1,5 +1,5 @@
 import type { MessengerClient, TaskId } from "../../types";
-import { hasOpencodeProcess, killOpencodeInSession } from "../tmux/session";
+import { hasOpencodeProcess, killOpencodeInSession, killSession } from "../tmux/session";
 import { updateTaskMessage } from "../../interface/messenger";
 
 const MONITOR_INTERVAL_MS = 60000;
@@ -142,6 +142,7 @@ export function startMonitoring(options: MonitorOptions): void {
 
       const killedCount = await killOpencodeInSession(sessionName);
       await cleanupStatusFile(statusFile);
+      await killSession(sessionName);
 
       const durationMinutes = Math.round(elapsed / 1000 / 60);
       const commandName = taskName.replace(/^\//, '');
@@ -211,6 +212,7 @@ export function startMonitoring(options: MonitorOptions): void {
 
       const killedCount = await killOpencodeInSession(sessionName);
       await cleanupStatusFile(statusFile);
+      await killSession(sessionName);
 
       const durationMinutes2 = Math.round(elapsed / 1000 / 60);
 
