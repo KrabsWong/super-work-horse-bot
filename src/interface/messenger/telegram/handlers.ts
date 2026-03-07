@@ -16,21 +16,21 @@ export async function handleStart(ctx: PlatformContext): Promise<void> {
   const commandList = commandNames.map(cmd => `/${cmd} <text> - Execute opencode in configured workspace`).join('\n');
 
   await ctx.reply(
-    `Hello @${username}!\n\n` +
+    `👋 Hello @${username}!\n\n` +
     `I'm VibeCodingBot, your server command assistant.\n\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `System Commands:\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `/run <command> <text> - 执行指定命令\n` +
-    `/jobs - 查看运行中/排队的任务\n` +
-    `/cron - 查看定时任务列表\n` +
-    `/finish - 终止运行中的进程\n` +
-    `/help - 显示帮助信息\n\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `Configured Commands:\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `**⚙️ System Commands**\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `▶️ /run <command> <text> - 执行指定命令\n` +
+    `📋 /jobs - 查看运行中/排队的任务\n` +
+    `⏰ /cron - 查看定时任务列表\n` +
+    `⏹️ /finish - 终止运行中的进程\n` +
+    `❓ /help - 显示帮助信息\n\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `**🔧 Configured Commands**\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
     `${commandList}\n\n` +
-    `Example:\n` +
+    `💡 Example:\n` +
     `/${commandNames[0] || 'command'} 帮我生成一份研究报告，介绍新能源汽车领域涉及到哪些技术`
   );
 }
@@ -41,44 +41,44 @@ export async function handleHelp(ctx: PlatformContext): Promise<void> {
 
   for (const cmdName of commandNames) {
     const cmdConfig = config.commands[cmdName];
-    commandDetails += `/${cmdName} <text>\n`;
-    commandDetails += `  Working directory: ${cmdConfig.dir}\n`;
-    commandDetails += `  Prompt format: ${cmdConfig.prompt}\n`;
-    commandDetails += `  Session: ${cmdConfig.session}\n`;
-    commandDetails += `  Max concurrent: ${cmdConfig.maxConcurrent}\n\n`;
+    commandDetails += `🔸 /${cmdName} <text>\n`;
+    commandDetails += `   📁 Working directory: ${cmdConfig.dir}\n`;
+    commandDetails += `   📝 Prompt format: ${cmdConfig.prompt}\n`;
+    commandDetails += `   🖥️ Session: ${cmdConfig.session}\n`;
+    commandDetails += `   ⚡ Max concurrent: ${cmdConfig.maxConcurrent}\n\n`;
   }
 
   await ctx.reply(
-    `Help - Available Commands\n\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `Built-in Commands:\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-    `/run <command> <text>\n` +
-    `  执行指定命令（或使用默认命令）\n\n` +
-    `/jobs [list|stop|show]\n` +
-    `  任务管理\n` +
-    `  /jobs           - 查看运行中/排队的任务\n` +
-    `  /jobs show <id> - 查看任务详情\n` +
-    `  /jobs stop <id> - 取消排队中的任务\n\n` +
-    `/cron [list|run|show]\n` +
-    `  定时任务管理\n` +
-    `  /cron              - 查看定时任务列表\n` +
-    `  /cron show <name>  - 查看任务详情\n` +
-    `  /cron run <name>   - 手动触发任务\n\n` +
-    `/finish\n` +
-    `  终止运行中的 opencode 进程\n\n` +
-    `/help\n` +
-    `  显示此帮助信息\n\n` +
-    `/start\n` +
-    `  显示欢迎信息\n\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `Configured Commands:\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `📖 **Help - Available Commands**\n\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `**⚙️ Built-in Commands**\n` +
+    `━━━━━━━━━━━━━━━━━━\n\n` +
+    `▶️ **/run** <command> <text>\n` +
+    `   执行指定命令（或使用默认命令）\n\n` +
+    `📋 **/jobs** [list|stop|show]\n` +
+    `   任务管理\n` +
+    `   • /jobs list        - 查看运行中/排队的任务\n` +
+    `   • /jobs show <id>   - 查看任务详情\n` +
+    `   • /jobs stop <id>   - 取消排队中的任务\n\n` +
+    `⏰ **/cron** [list|run|show]\n` +
+    `   定时任务管理\n` +
+    `   • /cron list           - 查看定时任务列表\n` +
+    `   • /cron show <name>    - 查看任务详情\n` +
+    `   • /cron run <name>     - 手动触发任务\n\n` +
+    `⏹️ **/finish**\n` +
+    `   终止运行中的 opencode 进程\n\n` +
+    `❓ **/help**\n` +
+    `   显示此帮助信息\n\n` +
+    `🏠 **/start**\n` +
+    `   显示欢迎信息\n\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `**🔧 Configured Commands**\n` +
+    `━━━━━━━━━━━━━━━━━━\n\n` +
     `${commandDetails}` +
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-    `Example:\n` +
+    `━━━━━━━━━━━━━━━━━━\n\n` +
+    `💡 **Example:**\n` +
     `/${commandNames[0] || 'command'} 帮我生成一份研究报告，介绍新能源汽车领域涉及到哪些技术\n\n` +
-    `This will execute opencode in the configured workspace directory.`
+    `_This will execute opencode in the configured workspace directory._`
   );
 }
 
@@ -234,7 +234,7 @@ export async function handleFinish(ctx: PlatformContext): Promise<void> {
 
 export async function handleUnknown(ctx: PlatformContext): Promise<void> {
   await ctx.reply(
-    'Unknown command.\n\n' +
+    '❓ **Unknown command**\n\n' +
     'Use /help to see available commands.'
   );
 }
