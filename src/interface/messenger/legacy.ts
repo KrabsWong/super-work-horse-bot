@@ -38,7 +38,11 @@ function formatTimestamp(timestamp: number | undefined): string {
 function formatRuntime(data: TaskMessageData): string {
   const start = formatTimestamp(data.startedAt);
   const end = data.completedAt ? formatTimestamp(data.completedAt) : "?";
-  return `运行时间: ${start} ~ ${end} （耗时 ${data.duration || 0} 分钟）`;
+  const totalSeconds = data.duration || 0;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const durationStr = minutes > 0 ? `${minutes}分${seconds}秒` : `${seconds}秒`;
+  return `运行时间: ${start} ~ ${end} （耗时 ${durationStr}）`;
 }
 
 export function formatTaskMessage(data: TaskMessageData): string {

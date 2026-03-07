@@ -4,6 +4,7 @@ export class MessengerManager {
   private platforms: Map<PlatformType, MessengerPlatform> = new Map();
   private commandHandlers: Map<string, CommandHandler> = new Map();
   private unknownHandler: CommandHandler | null = null;
+  private callbackQueryHandlers: Array<{ pattern: RegExp; handler: CommandHandler }> = [];
 
   register(platform: MessengerPlatform): void {
     this.platforms.set(platform.platform, platform);
@@ -25,9 +26,15 @@ export class MessengerManager {
         for (const [commandName, handler] of this.commandHandlers) {
           platform.onCommand(commandName, handler);
         }
-        
+
         if (this.unknownHandler) {
           platform.onUnknown(this.unknownHandler);
+        }
+
+        for (const { pattern, handler } of this.callbackQueryHandlers) {
+          if (platform.onCallbackQuery) {
+            platform.onCallbackQuery(pattern, handler);
+          }
         }
 
         await platform.start();
@@ -63,9 +70,19 @@ export class MessengerManager {
 
   onUnknown(handler: CommandHandler): void {
     this.unknownHandler = handler;
-    
+
     for (const platform of this.platforms.values()) {
       platform.onUnknown(handler);
+    }
+  }
+
+  onCallbackQuery(pattern: RegExp, handler: CommandHandler): void {
+    this.callbackQueryHandlers.push({ pattern, handler });
+
+    for (const platform of this.platforms.values()) {
+      if (platform.onCallbackQuery) {
+        platform.onCallbackQuery(pattern, handler);
+      }
     }
   }
 

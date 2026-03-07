@@ -12,23 +12,23 @@ interface PlatformContext {
 export async function handleStart(ctx: PlatformContext): Promise<void> {
   const username = ctx.username || 'there';
   const commandNames = Object.keys(config.commands);
-  const commandList = commandNames.map(cmd => `/${cmd} <text> - Execute opencode in configured workspace`).join('\n');
+  const commandList = commandNames.map(cmd => `/${cmd} <text> - 在配置的工作空间执行`).join('\n');
 
   await ctx.reply(
-    `👋 Hello @${username}!\n\n` +
-    `I'm VibeCodingBot, your server command assistant.\n\n` +
+    `👋 你好 @${username}!\n\n` +
+    `我是 VibeCodingBot，你的服务器命令助手。\n\n` +
     `━━━━━━━━━━━━━━━━━━\n` +
-    `⚙️ System Commands\n` +
+    `⚙️ 系统命令\n` +
     `━━━━━━━━━━━━━━━━━━\n` +
     `▶️ /run <command> <text> - 执行指定命令\n` +
     `📋 /jobs - 查看运行中/排队的任务\n` +
     `⏰ /cron - 查看定时任务列表\n` +
     `❓ /help - 显示帮助信息\n\n` +
     `━━━━━━━━━━━━━━━━━━\n` +
-    `🔧 Configured Commands\n` +
+    `🔧 配置命令\n` +
     `━━━━━━━━━━━━━━━━━━\n` +
     `${commandList}\n\n` +
-    `💡 Example:\n` +
+    `💡 示例:\n` +
     `/${commandNames[0] || 'command'} 帮我生成一份研究报告，介绍新能源汽车领域涉及到哪些技术`
   );
 }
@@ -40,16 +40,16 @@ export async function handleHelp(ctx: PlatformContext): Promise<void> {
   for (const cmdName of commandNames) {
     const cmdConfig = config.commands[cmdName];
     commandDetails += `🔸 /${cmdName} <text>\n`;
-    commandDetails += `   📁 Working directory: ${cmdConfig.dir}\n`;
-    commandDetails += `   📝 Prompt format: ${cmdConfig.prompt}\n`;
-    commandDetails += `   🖥️ Session: ${cmdConfig.session}\n`;
-    commandDetails += `   ⚡ Max concurrent: ${cmdConfig.maxConcurrent}\n\n`;
+    commandDetails += `   📁 工作目录: ${cmdConfig.dir}\n`;
+    commandDetails += `   📝 提示词: ${cmdConfig.prompt}\n`;
+    commandDetails += `   🖥️ 会话: ${cmdConfig.session}\n`;
+    commandDetails += `   ⚡ 最大并发: ${cmdConfig.maxConcurrent}\n\n`;
   }
 
   await ctx.reply(
-    `📖 Help - Available Commands\n\n` +
+    `📖 帮助 - 可用命令\n\n` +
     `━━━━━━━━━━━━━━━━━━\n` +
-    `⚙️ Built-in Commands\n` +
+    `⚙️ 内置命令\n` +
     `━━━━━━━━━━━━━━━━━━\n\n` +
     `▶️ /run <command> <text>\n` +
     `   执行指定命令（或使用默认命令）\n\n` +
@@ -68,13 +68,13 @@ export async function handleHelp(ctx: PlatformContext): Promise<void> {
     `🏠 /start\n` +
     `   显示欢迎信息\n\n` +
     `━━━━━━━━━━━━━━━━━━\n` +
-    `🔧 Configured Commands\n` +
+    `🔧 配置命令\n` +
     `━━━━━━━━━━━━━━━━━━\n\n` +
     `${commandDetails}` +
     `━━━━━━━━━━━━━━━━━━\n\n` +
-    `💡 Example:\n` +
+    `💡 示例:\n` +
     `/${commandNames[0] || 'command'} 帮我生成一份研究报告，介绍新能源汽车领域涉及到哪些技术\n\n` +
-    `This will execute opencode in the configured workspace directory.`
+    `这将在配置的工作目录中执行 opencode 命令。`
   );
 }
 

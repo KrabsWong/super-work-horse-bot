@@ -1,5 +1,5 @@
 import { Client, GatewayIntentBits, Events, Message, TextChannel } from 'discord.js';
-import type { MessengerPlatform, MessengerClient, CommandHandler, MessageResult } from '../types';
+import type { MessengerPlatform, MessengerClient, CommandHandler, MessageResult, InlineButton } from '../types';
 
 export class DiscordMessenger implements MessengerPlatform {
   readonly platform = 'discord' as const;
@@ -125,7 +125,7 @@ export class DiscordMessenger implements MessengerPlatform {
       const textChannel = channel as TextChannel;
       const msg = await textChannel.messages.fetch(messageId);
       await msg.edit(message);
-      
+
       return true;
     } catch (error) {
       console.error('[DiscordMessenger] Failed to edit message:', error);
@@ -133,15 +133,71 @@ export class DiscordMessenger implements MessengerPlatform {
     }
   }
 
+  async sendMessageWithButtons(
+    chatId: string,
+    message: string,
+    buttons: InlineButton[][]
+  ): Promise<MessageResult | null> {
+    try {
+      console.log(`[DiscordMessenger] Sending message with buttons to channel: ${chatId}`);
+      const channel = await this.client.channels.fetch(chatId);
+      if (!channel) {
+        console.error(`[DiscordMessenger] Channel ${chatId} not found`);
+        return null;
+      }
+      if (!('send' in channel)) {
+        console.error(`[DiscordMessenger] Channel ${chatId} does not support sending messages`);
+        return null;
+      }
+
+      const buttonTexts = buttons
+        .flat()
+        .map(btn => `[${btn.text}]`)
+        .join(' ');
+      const fullMessage = `${message}\n\n可用操作: ${buttonTexts}`;
+
+      const result = await (channel as any).send(fullMessage);
+
+      return {
+        messageId: result.id,
+        chatId: result.channelId,
+      };
+    } catch (error) {
+      console.error('[DiscordMessenger] Failed to send message with buttons:', error);
+      return null;
+    }
+  }
+
   getNativeClient(): Client {
     return this.client;
+  }
+
+  async editMessageWithButtons(
+    chatId: string,
+    messageId: string,
+    message: string,
+    buttons: InlineButton[][]
+  ): Promise<boolean> {
+    try {
+      const buttonTexts = buttons
+        .flat()
+        .map(btn => `[${btn.text}]`)
+        .join(' ');
+      const fullMessage = `${message}\n\n可用操作: ${buttonTexts}`;
+      return this.editMessage(chatId, messageId, fullMessage);
+    } catch (error) {
+      console.error('[DiscordMessenger] Failed to edit message with buttons:', error);
+      return false;
+    }
   }
 
   private createClient(): MessengerClient {
     return {
       platform: this.platform,
       sendMessage: this.sendMessage.bind(this),
+      sendMessageWithButtons: this.sendMessageWithButtons.bind(this),
       editMessage: this.editMessage.bind(this),
+      editMessageWithButtons: this.editMessageWithButtons.bind(this),
       getNativeClient: this.getNativeClient.bind(this),
     };
   }
