@@ -1,6 +1,6 @@
-import type { MessengerClient, TaskId } from "../types";
+import type { MessengerClient, TaskId } from "../../types";
 import { hasOpencodeProcess, killOpencodeInSession } from "../tmux/session";
-import { updateTaskMessage } from "../messenger";
+import { updateTaskMessage } from "../../interface/messenger";
 
 const MONITOR_INTERVAL_MS = 60000;
 const MAX_MONITOR_DURATION_MS = 60 * 60 * 1000;

@@ -1,5 +1,5 @@
 import { config, validateConfig, initializeConfig } from './config';
-import { checkTmuxAvailability } from './tmux/session';
+import { checkTmuxAvailability } from './infra/tmux/session';
 import {
   handleStart,
   handleHelp,
@@ -8,11 +8,11 @@ import {
   handleUnknown,
   handleStatus,
   handleCancel,
-} from './messenger/telegram/handlers';
-import { initializeCronTasks, stopCronJobs } from './scheduler';
-import { taskManager } from './task-manager';
-import { stopAllMonitors } from './monitor';
-import { MessengerManager, TelegramMessenger, DiscordMessenger } from './messenger';
+} from './interface/messenger/telegram/handlers';
+import { initializeCronTasks, stopCronJobs } from './core/scheduler';
+import { taskManager } from './core/task-manager';
+import { stopAllMonitors } from './infra/monitor';
+import { MessengerManager, TelegramMessenger, DiscordMessenger } from './interface/messenger';
 import type { Cron } from 'croner';
 
 async function main(): Promise<void> {

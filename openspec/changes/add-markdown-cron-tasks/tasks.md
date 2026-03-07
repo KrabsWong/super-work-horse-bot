@@ -1,25 +1,25 @@
 ## 0. 目录结构重组
 
-- [ ] 0.1 创建 `src/infra/` 目录结构
-- [ ] 0.2 移动 `tmux/` → `infra/tmux/`
-- [ ] 0.3 移动 `git/` → `infra/git/`
-- [ ] 0.4 移动 `cli/` → `infra/cli/`
-- [ ] 0.5 移动 `monitor/` → `infra/monitor/`
-- [ ] 0.6 创建 `src/core/` 目录结构
-- [ ] 0.7 移动 `task-manager/` → `core/task-manager/`
-- [ ] 0.8 移动 `scheduler/` → `core/scheduler/`
-- [ ] 0.9 创建 `src/interface/` 目录结构
-- [ ] 0.10 移动 `messenger/` → `interface/messenger/`
-- [ ] 0.11 移动 `commands/` → `interface/commands/`
-- [ ] 0.12 更新所有 import 路径
+- [x] 0.1 创建 `src/infra/` 目录结构
+- [x] 0.2 移动 `tmux/` → `infra/tmux/`
+- [x] 0.3 移动 `git/` → `infra/git/`
+- [x] 0.4 移动 `cli/` → `infra/cli/`
+- [x] 0.5 移动 `monitor/` → `infra/monitor/`
+- [x] 0.6 创建 `src/core/` 目录结构
+- [x] 0.7 移动 `task-manager/` → `core/task-manager/`
+- [x] 0.8 移动 `scheduler/` → `core/scheduler/`
+- [x] 0.9 创建 `src/interface/` 目录结构
+- [x] 0.10 移动 `messenger/` → `interface/messenger/`
+- [x] 0.11 移动 `commands/` → `interface/commands/`
+- [x] 0.12 更新所有 import 路径
 
 ## 1. 定时任务管理模块
 
-- [ ] 1.1 创建 `src/core/cron-manager/types.ts` 定义任务配置类型
-- [ ] 1.2 创建 `src/core/cron-manager/parser.ts` 解析 Markdown + YAML frontmatter
-- [ ] 1.3 创建 `src/core/cron-manager/time-rules.ts` 时间表达式规则引擎
-- [ ] 1.4 创建 `src/core/cron-manager/validator.ts` 配置验证器
-- [ ] 1.5 创建 `src/core/cron-manager/watcher.ts` 文件变更监听
+- [x] 1.1 创建 `src/core/cron-manager/types.ts` 定义任务配置类型
+- [x] 1.2 创建 `src/core/cron-manager/parser.ts` 解析 Markdown + YAML frontmatter
+- [x] 1.3 创建 `src/core/cron-manager/time-rules.ts` 时间表达式规则引擎
+- [x] 1.4 创建 `src/core/cron-manager/validator.ts` 配置验证器
+- [x] 1.5 创建 `src/core/cron-manager/watcher.ts` 文件变更监听
 
 ## 2. 定时任务执行
 

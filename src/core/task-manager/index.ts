@@ -1,14 +1,14 @@
-import type { TaskId, Task, TaskResult, ExecutionContext, MessengerClient } from '../types';
-import { TaskStatus } from '../types';
+import type { TaskId, Task, TaskResult, ExecutionContext, MessengerClient } from '../../types';
+import { TaskStatus } from '../../types';
 import { SlotManager } from './slot-manager';
 import { TaskQueue } from './queue';
 import type { TaskQueueItem } from './types';
-import { getCurrentBranch } from '../git/sync';
-import { createWorktree, removeWorktree } from '../git/worktree';
-import { executeInTmux, sessionExists, killSession } from '../tmux/session';
-import { config } from '../config';
-import { buildCliCommand } from '../cli/builder';
-import { generateStatusFilePath, buildCompletionInstruction } from '../monitor';
+import { getCurrentBranch } from '../../infra/git/sync';
+import { createWorktree, removeWorktree } from '../../infra/git/worktree';
+import { executeInTmux, sessionExists, killSession } from '../../infra/tmux/session';
+import { config } from '../../config';
+import { buildCliCommand } from '../../infra/cli/builder';
+import { generateStatusFilePath, buildCompletionInstruction } from '../../infra/monitor';
 
 function generateTaskId(): TaskId {
   const now = new Date();

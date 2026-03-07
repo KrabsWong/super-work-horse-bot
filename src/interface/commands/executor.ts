@@ -1,8 +1,8 @@
-import { config } from '../config';
-import { startMonitoring } from '../monitor';
-import type { ExecutionResult, ValidationResult, ExecutionContext, TaskResult } from '../types';
-import { taskManager } from '../task-manager';
-import { sendTaskMessage, type TaskMessageData } from '../messenger';
+import { config } from '../../config';
+import { startMonitoring } from '../../infra/monitor';
+import type { ExecutionResult, ValidationResult, ExecutionContext, TaskResult } from '../../types';
+import { taskManager } from '../../core/task-manager';
+import { sendTaskMessage, type TaskMessageData } from '../../interface/messenger';
 
 export function sanitizeInput(input: string): string {
   if (!input || typeof input !== 'string') {

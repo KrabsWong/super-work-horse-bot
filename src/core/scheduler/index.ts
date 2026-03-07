@@ -1,8 +1,8 @@
 import { Cron } from 'croner';
-import type { MessengerClient } from '../messenger/types';
-import { config } from '../config';
-import { startMonitoring } from '../monitor';
-import { sendTaskMessage, type TaskMessageData } from '../messenger';
+import type { MessengerClient } from '../../interface/messenger/types';
+import { config } from '../../config';
+import { startMonitoring } from '../../infra/monitor';
+import { sendTaskMessage, type TaskMessageData } from '../../interface/messenger';
 import { taskManager } from '../task-manager';
 
 interface GitHubRepo {

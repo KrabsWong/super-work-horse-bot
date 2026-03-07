@@ -1,8 +1,8 @@
 import type { CommandContext } from '../types';
 import { executeCommand } from '../../commands/executor';
-import { config } from '../../config';
-import { sendCtrlC } from '../../tmux/session';
-import { taskManager } from '../../task-manager';
+import { config } from '../../../config';
+import { sendCtrlC } from '../../../infra/tmux/session';
+import { taskManager } from '../../../core/task-manager';
 
 interface PlatformContext {
   username?: string;
