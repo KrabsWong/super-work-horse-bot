@@ -2,7 +2,7 @@ import { config } from '../../config';
 import { startMonitoring } from '../../infra/monitor';
 import type { ExecutionResult, ValidationResult, ExecutionContext, TaskResult } from '../../types';
 import { taskManager } from '../../core/task-manager';
-import { sendTaskMessage, type TaskMessageData } from '../../interface/messenger';
+import { sendTaskMessage, updateTaskMessage, type TaskMessageData } from '../../interface/messenger';
 
 export function sanitizeInput(input: string): string {
   if (!input || typeof input !== 'string') {
@@ -138,11 +138,38 @@ export async function executeCommand(
           messageId: messageId || undefined,
           args: sanitized,
           startedAt: task.startedAt,
-          onCompletion: async (taskId) => {
+          onCompletion: async (taskId, duration, killedCount) => {
             await taskManager.completeTask(taskId);
+            if (messageId && context.messenger && context.chatId) {
+              await updateTaskMessage(context.messenger, String(context.chatId), messageId, {
+                taskId,
+                commandName,
+                args: sanitized,
+                sessionName: taskResult.sessionName,
+                branchName: taskResult.branchName,
+                status: 'completed',
+                duration,
+                killedCount,
+                startedAt: task.startedAt,
+                completedAt: Date.now(),
+              });
+            }
           },
-          onFailure: async (taskId, _reason, _duration) => {
-            await taskManager.failTask(taskId, `Task ended unexpectedly (${_reason})`);
+          onFailure: async (taskId, reason, duration) => {
+            await taskManager.failTask(taskId, `Task ended unexpectedly (${reason})`);
+            if (messageId && context.messenger && context.chatId) {
+              await updateTaskMessage(context.messenger, String(context.chatId), messageId, {
+                taskId,
+                commandName,
+                args: sanitized,
+                sessionName: taskResult.sessionName,
+                branchName: taskResult.branchName,
+                status: 'error',
+                duration,
+                startedAt: task.startedAt,
+                completedAt: Date.now(),
+              });
+            }
           },
         });
       }
