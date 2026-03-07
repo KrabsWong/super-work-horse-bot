@@ -23,31 +23,31 @@
 
 ## 2. 定时任务执行
 
-- [ ] 1.6 创建 `src/core/cron-manager/planner.ts` LLM 规划器
-- [ ] 1.7 创建 `src/core/cron-manager/orchestrator.ts` 多步骤执行器（调用 task-manager）
-- [ ] 1.8 创建 `src/core/cron-manager/reporter.ts` 报告生成与发送
+- [x] 1.6 创建 `src/core/cron-manager/planner.ts` LLM 规划器
+- [x] 1.7 创建 `src/core/cron-manager/orchestrator.ts` 多步骤执行器（调用 task-manager）
+- [x] 1.8 创建 `src/core/cron-manager/reporter.ts` 报告生成与发送
 
 ## 3. 调度器重构
 
-- [ ] 3.1 创建 `src/core/scheduler/registry.ts` 任务注册表
-- [ ] 3.2 重构 `src/core/scheduler/index.ts` 支持 Markdown 任务配置
-- [ ] 3.3 移除对 `config.yaml` 中 `cronTasks` 的依赖
+- [x] 3.1 创建 `src/core/scheduler/registry.ts` 任务注册表
+- [x] 3.2 重构 `src/core/scheduler/index.ts` 支持 Markdown 任务配置
+- [x] 3.3 移除对 `config.yaml` 中 `cronTasks` 的依赖
 
 ## 4. 命令系统重构
 
-- [ ] 4.1 创建 `src/interface/commands/job-commands.ts` 实现 `/jobs` 相关命令
-- [ ] 4.2 创建 `src/interface/commands/cron-commands.ts` 实现 `/cron` 相关命令
-- [ ] 4.3 创建 `src/interface/commands/run-command.ts` 实现 `/run` 命令
-- [ ] 4.4 重构 `src/interface/messenger/telegram/handlers.ts` 注册新命令
-- [ ] 4.5 重构 `src/interface/messenger/discord/index.ts` 注册新命令
-- [ ] 4.6 移除旧命令 `/status`, `/finish`, 动态命令注册
+- [x] 4.1 创建 `src/interface/commands/job-commands.ts` 实现 `/jobs` 相关命令
+- [x] 4.2 创建 `src/interface/commands/cron-commands.ts` 实现 `/cron` 相关命令
+- [x] 4.3 创建 `src/interface/commands/run-command.ts` 实现 `/run` 命令
+- [x] 4.4 重构 `src/interface/messenger/telegram/handlers.ts` 注册新命令
+- [x] 4.5 重构 `src/interface/messenger/discord/index.ts` 注册新命令
+- [x] 4.6 移除旧命令 `/status`, `/finish`, 动态命令注册
 
 ## 5. 配置迁移
 
-- [ ] 5.1 更新 `config.yaml.example` 移除 `cronTasks`
-- [ ] 5.2 创建 `cron/` 目录结构
-- [ ] 5.3 创建示例任务文件 `cron/daily-research.md`
-- [ ] 5.4 更新 `src/index.ts` 入口文件 import 路径
+- [x] 5.1 更新 `config.yaml.example` 移除 `cronTasks`
+- [x] 5.2 创建 `cron/` 目录结构
+- [x] 5.3 创建示例任务文件 `cron/daily-research.md`
+- [x] 5.4 更新 `src/index.ts` 入口文件 import 路径
 
 ## 6. 测试与验证
 

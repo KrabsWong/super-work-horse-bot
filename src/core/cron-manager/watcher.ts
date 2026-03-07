@@ -11,7 +11,7 @@ export class CronWatcher {
   private tasks: Map<string, CronTaskConfig> = new Map();
   private onChangeCallback: ((tasks: Map<string, CronTaskConfig>) => void) | null = null;
   private debounceTimer: Timer | null = null;
-  private watching: boolean = false;
+  private _watching: boolean = false;
 
   constructor(cronDir: string) {
     this.cronDir = cronDir;
@@ -23,17 +23,21 @@ export class CronWatcher {
 
   async start(): Promise<void> {
     console.log(`[CronWatcher] Starting to watch directory: ${this.cronDir}`);
-    this.watching = true;
+    this._watching = true;
     await this.scan();
   }
 
   stop(): void {
     console.log('[CronWatcher] Stopping watcher');
-    this.watching = false;
+    this._watching = false;
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
       this.debounceTimer = null;
     }
+  }
+
+  isWatching(): boolean {
+    return this._watching;
   }
 
   private async scan(): Promise<void> {
