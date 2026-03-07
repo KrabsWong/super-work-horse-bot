@@ -96,10 +96,24 @@ bun start
 
 Once the bot is running, you can interact with it on Telegram:
 
+**System Commands:**
 - `/start` - Show welcome message
 - `/help` - Display help information
-- `/finish` - Stop the running opencode process in research session
-- `/<command> <text>` - Execute opencode in configured workspace
+- `/finish` - Stop the running opencode process
+- `/run <command> <text>` - Execute specified command (or default command)
+
+**Task Management:**
+- `/jobs` - List running and queued tasks
+- `/jobs show <taskId>` - Show task details
+- `/jobs stop <taskId>` - Cancel a queued task
+
+**Cron Task Management:**
+- `/cron` - List scheduled cron tasks
+- `/cron show <taskName>` - Show cron task details
+- `/cron run <taskName>` - Manually trigger a cron task
+
+**Configured Commands:**
+- `/<command> <text>` - Execute opencode in configured workspace (defined in config.yaml)
 
 ### Example
 
@@ -135,23 +149,25 @@ super-work-horse-bot/
 ├── package.json             # Project dependencies
 ├── tsconfig.json            # TypeScript configuration
 ├── README.md                # This file
+├── cron/                    # Cron task definitions (markdown files)
 ├── src/
 │   ├── index.ts             # Entry point, bot initialization
 │   ├── types/
 │   │   └── index.ts         # TypeScript type definitions
 │   ├── config/
 │   │   └── index.ts         # YAML configuration loader
-│   ├── bot/
-│   │   ├── handlers.ts      # Command handlers
-│   │   └── middleware.ts    # Logging, error handling
-│   ├── tmux/
-│   │   └── session.ts       # tmux session management
-│   ├── commands/
-│   │   └── executor.ts     # Command execution logic
-│   ├── scheduler/
-│   │   └── index.ts         # Cron task scheduler
-│   └── monitor/
-│       └── index.ts         # Task monitoring & completion tracking
+│   ├── core/
+│   │   ├── scheduler/       # Cron task scheduler
+│   │   ├── task-manager/    # Task queue and execution management
+│   │   └── cron-manager/    # Cron expression parsing and orchestration
+│   ├── infra/
+│   │   ├── tmux/            # tmux session management
+│   │   ├── monitor/         # Task monitoring & completion tracking
+│   │   ├── git/             # Git worktree and sync utilities
+│   │   └── cli/             # CLI builder for opencode/claude
+│   └── interface/
+│       ├── messenger/       # Platform abstraction (Telegram/Discord)
+│       └── commands/        # Command handlers
 └── openspec/                # OpenSpec design documents
 ```
 

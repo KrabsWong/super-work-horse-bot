@@ -8,11 +8,12 @@ Telegram bot server that enables remote execution of AI coding workflows (via `o
 
 - **Runtime**: Bun v1+ (native TypeScript support)
 - **Language**: TypeScript with strict mode
-- **Bot Framework**: Telegraf v4.x (Telegram Bot API wrapper)
+- **Bot Framework**: Telegraf v4.x (Telegram Bot API wrapper), discord.js v14.x
 - **Session Management**: tmux (terminal multiplexer)
 - **Configuration**: YAML-based (js-yaml)
 - **Scheduler**: Croner v9.x (cron expressions)
-- **External Tools**: opencode CLI (AI coding assistant)
+- **Version Control**: Git (worktree for task isolation)
+- **External Tools**: opencode CLI, claude CLI (AI coding assistants)
 
 ## Project Conventions
 
@@ -56,43 +57,72 @@ Telegram bot server that enables remote execution of AI coding workflows (via `o
 
 ### Key Concepts
 
-- **Slash Commands**: Telegram commands starting with `/` (e.g., `/research`)
+- **Slash Commands**: Telegram/Discord commands starting with `/` (e.g., `/research`)
 - **tmux Sessions**: Background terminal sessions that persist after disconnect
 - **Long-polling**: Bot update mode where bot requests updates from Telegram API
 - **Command Injection**: Security vulnerability where user input could execute arbitrary code
 - **Whitelisting**: Security pattern where only approved commands are allowed
-- **Cron Tasks**: Scheduled execution using cron expressions
+- **Cron Tasks**: Scheduled execution using cron expressions, defined in `./cron/*.md` files
+- **Task Manager**: Queue system managing concurrent task execution with configurable limits
+- **Cron Manager**: File watcher and scheduler for automatic task reloading
 - **Status File**: Marker file created by opencode to signal task completion
 - **GitHub Trending**: API integration for generating research topics from popular repositories
+- **Git Worktree**: Isolated working directories for concurrent task execution
+- **Messenger Platform**: Abstraction layer supporting Telegram and Discord
 
 ### User Workflow
 
-1. User opens Telegram and messages the bot
-2. User sends `/research <text>` command
+1. User opens Telegram/Discord and messages the bot
+2. User sends `/<command> <text>` or `/run <command> <text>`
 3. Bot validates and sanitizes the input
-4. Bot checks if tmux session exists (creates if needed)
-5. Bot executes `opencode --prompt "/research <text>"` in tmux session
-6. Bot monitors task execution (completion or timeout)
-7. Bot sends notification to user on completion or failure
-8. User can check tmux session for command output
+4. Bot creates a git worktree for isolated execution (if configured)
+5. Bot checks if tmux session exists (creates if needed)
+6. Bot executes the command in tmux session
+7. Task Manager tracks execution status
+8. Bot monitors task execution (completion or timeout)
+9. Bot sends notification to user on completion or failure
+10. User can check task status via `/jobs` command
+
+### Task Management Commands
+
+- `/jobs` - List all running and queued tasks
+- `/jobs show <taskId>` - View detailed task information
+- `/jobs stop <taskId>` - Cancel a queued task
+- `/finish` - Stop all running tasks gracefully
 
 ### Admin Workflow (Cron)
 
-1. Admin configures cron tasks in `config.yaml`
-2. Scheduler triggers task at configured time
-3. System fetches GitHub trending repositories created in the past week
-4. System selects an interesting repository based on relevance scoring
-5. Bot executes opencode with generated research prompt (project analysis, use cases, competitors)
-6. Bot monitors and notifies on completion
+1. Admin creates cron task files in `./cron/` directory (markdown format)
+2. File watcher detects changes and reloads tasks automatically
+3. Scheduler triggers task at configured cron expression time
+4. System fetches GitHub trending repositories created in the past week
+5. System selects an interesting repository based on relevance scoring
+6. Bot executes opencode with generated research prompt (project analysis, use cases, competitors)
+7. Bot monitors and notifies on completion
+
+### Cron Task File Format
+
+Create markdown files in `./cron/` directory:
+
+```markdown
+# Task Name
+
+- **Schedule**: `0 9 * * *`
+- **Description**: Analyze trending repositories
+- **Enabled**: true
+- **Messenger**: telegram
+```
 
 ## Important Constraints
 
 - **Single server deployment**: Not designed for distributed/multi-server setup
-- **Trusted users only**: No multi-user authentication beyond Telegram's built-in mechanisms
+- **Trusted users only**: No multi-user authentication beyond Telegram/Discord's built-in mechanisms
 - **Command whitelisting**: Only configured commands in `config.yaml` can execute
 - **Task timeout**: Maximum 1 hour execution time before force stop
 - **Requires tmux**: Hard dependency on tmux being installed on server
-- **Requires opencode**: Assumes opencode CLI tool is available in PATH
+- **Requires Git**: Git worktrees are used for concurrent task isolation
+- **Requires opencode or claude**: Assumes AI CLI tool is available in PATH
+- **Multi-platform support**: Both Telegram and Discord platforms supported, but only one active at a time
 
 ## External Dependencies
 
@@ -109,7 +139,17 @@ Telegram bot server that enables remote execution of AI coding workflows (via `o
 
 ### Configuration (config.yaml)
 
-- `telegramBotToken` (required): Bot authentication token from @BotFather
+- `platforms` (required): Messenger platform configuration
+  - `activePlatform`: `"telegram"` or `"discord"`
+  - `telegram.token`: Bot authentication token from @BotFather
+  - `discord.token`: Bot token from Discord Developer Portal
 - `logLevel` (optional): Logging verbosity (default: "info")
 - `commands` (required): Array of command configurations
-- `cronTasks` (optional): Array of scheduled task configurations
+  - `name`: Command name (used as `/<name>`)
+  - `dir`: Working directory for the command
+  - `prompt`: Prompt format for the AI
+  - `session`: tmux session name (optional)
+  - `model`: AI model to use (optional)
+  - `cli`: CLI tool configuration (`opencode` or `claude`)
+  - `maxConcurrent`: Maximum concurrent tasks (default: 1)
+- `cronDir` (optional): Directory for cron task markdown files (default: `./cron`)
