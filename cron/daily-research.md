@@ -5,8 +5,7 @@ messenger: telegram
 enabled: true
 ---
 
-每天早上9点，从 GitHub trending 中选择一个本周热门的开源项目，
-进行深入研究分析。
+硅基写手，每天早上9点，从 GitHub trending 中选择一个本周热门的开源项目，进行深入研究分析。
 
 分析内容应包括：
 1. 项目核心功能和价值主张
