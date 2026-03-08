@@ -149,7 +149,26 @@ export class TaskManager {
   private async executeTask(task: Task, _context: ExecutionContext): Promise<void> {
     const cmdConfig = config.commands[task.commandName];
 
-    let additionalInstructions = `
+    // 检测测试模式：以"大哥测试下"开头的请求
+    const TEST_MODE_PREFIX = '大哥测试下';
+    const isTestMode = task.args.trim().startsWith(TEST_MODE_PREFIX);
+
+    let fullPrompt: string;
+
+    if (isTestMode) {
+      console.log(`[TaskManager] Test mode detected for task ${task.id}`);
+      const testModeInstructions = `
+[TEST MODE]
+You are in test mode. The user has prefixed their request with "大哥测试下".
+Please read 'openspec/project.md' to understand the project structure and execution flow.
+Then respond to the user's request directly without following the full research workflow.
+
+User Request:
+`;
+      fullPrompt = testModeInstructions + task.args;
+    } else {
+      // 正常模式：使用 openspec 流程
+      let additionalInstructions = `
 IMPORTANT INSTRUCTIONS:
 1. This is a RESEARCH task.
 2. **STEP 1**: Read 'openspec/project.md'.
@@ -161,14 +180,16 @@ IMPORTANT INSTRUCTIONS:
 6. **Output**: Start by stating: 'Identifying Intent... Selected Template: [Template Name]'.
 `;
 
-    additionalInstructions += buildCompletionInstruction(task.statusFile);
+      additionalInstructions += buildCompletionInstruction(task.statusFile);
+      fullPrompt = `${cmdConfig.prompt} ${task.args}${additionalInstructions}`;
+    }
 
-    const fullPrompt = `${cmdConfig.prompt} ${task.args}${additionalInstructions}`;
     const cliCmd = buildCliCommand(cmdConfig.cli, cmdConfig.model, fullPrompt);
     const workDir = task.worktreePath || cmdConfig.dir;
     const command = `cd ${workDir} && ${cliCmd}`;
 
     console.log(`[TaskManager] Executing task ${task.id} in session ${task.sessionName} (worktree: ${workDir})`);
+    console.log(`[TaskManager] Mode: ${isTestMode ? 'TEST' : 'NORMAL'}`);
 
     const success = await executeInTmux(command, task.sessionName);
 
