@@ -206,17 +206,3 @@ export async function listWorktrees(baseDir: string): Promise<string[]> {
   return paths;
 }
 
-export async function pruneWorktrees(baseDir: string): Promise<boolean> {
-  const { exitCode, stderr } = await execGitCommand(
-    ['worktree', 'prune'],
-    baseDir
-  );
-  
-  if (exitCode !== 0) {
-    console.error(`Failed to prune worktrees: ${stderr}`);
-    return false;
-  }
-  
-  console.log('Pruned stale worktree references');
-  return true;
-}

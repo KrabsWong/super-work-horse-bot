@@ -134,35 +134,4 @@ export class TaskPlanner {
     return this.planWithRules(description);
   }
 
-  validatePlan(plan: ExecutionPlan): boolean {
-    if (!plan.steps || plan.steps.length === 0) {
-      return false;
-    }
-
-    for (const step of plan.steps) {
-      if (step.type === 'command' && !step.command) {
-        return false;
-      }
-      if (step.type === 'action' && !step.action) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  summarizePlan(plan: ExecutionPlan): string {
-    const lines = plan.steps.map((step, index) => {
-      const num = index + 1;
-      if (step.type === 'command') {
-        return `${num}. Execute: ${step.args || step.command}`;
-      } else {
-        return `${num}. Action: ${step.action}`;
-      }
-    });
-
-    return `Execution Plan:\n${lines.join('\n')}`;
-  }
 }
-
-export const taskPlanner = new TaskPlanner();

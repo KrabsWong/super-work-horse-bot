@@ -1,4 +1,3 @@
-import type { Context, Telegraf } from 'telegraf';
 import type { PlatformsConfig, MessengerClient } from '../interface/messenger/types';
 
 export type CliType = 'opencode' | 'claude';
@@ -47,11 +46,6 @@ export interface Config {
   platforms: PlatformsConfig;
 }
 
-/**
- * Bot instance type for scheduler
- */
-export type BotInstance = Telegraf;
-
 export type { MessengerClient } from '../interface/messenger/types';
 
 /**
@@ -81,25 +75,6 @@ export interface ExecutionContext {
   messenger?: MessengerClient;
   enableMonitoring?: boolean;
 }
-
-/**
- * Result of a subprocess execution
- */
-export interface SubprocessResult {
-  stdout: string;
-  stderr: string;
-  exitCode: number;
-}
-
-/**
- * Telegraf middleware next function type
- */
-export type MiddlewareNext = () => Promise<void>;
-
-/**
- * Telegraf context type alias
- */
-export type BotContext = Context;
 
 // ============================================================================
 // Task Management Types
