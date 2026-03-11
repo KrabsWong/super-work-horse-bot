@@ -42,29 +42,4 @@ export async function withGitLock<T>(
   }
 }
 
-/**
- * Check if a lock exists for a directory (useful for debugging)
- * @param baseDir - The Git repository directory path
- */
-export function hasGitLock(baseDir: string): boolean {
-  const normalizedDir = baseDir.replace(/\/$/, '');
-  return gitLocks.has(normalizedDir);
-}
 
-/**
- * Get lock statistics for debugging
- */
-export function getLockStats(): { totalLocks: number; lockedDirs: string[] } {
-  const lockedDirs: string[] = [];
-  for (const [dir, mutex] of gitLocks.entries()) {
-    // Note: mutex.isLocked() is available in async-mutex 0.5.0+
-    if ((mutex as any).isLocked?.()) {
-      lockedDirs.push(dir);
-    }
-  }
-  
-  return {
-    totalLocks: gitLocks.size,
-    lockedDirs,
-  };
-}

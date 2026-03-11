@@ -47,11 +47,6 @@ export interface MonitorOptions {
   ) => Promise<void>;
 }
 
-export interface CommandWithStatus {
-  command: string;
-  statusFile: string;
-}
-
 export function generateStatusFilePath(
   taskIdOrSession: TaskId | string,
 ): string {
@@ -234,17 +229,6 @@ export function startMonitoring(options: MonitorOptions): void {
   );
 }
 
-export function stopMonitoring(taskId: TaskId): boolean {
-  const monitor = activeMonitors.get(taskId);
-  if (monitor) {
-    clearInterval(monitor.intervalId);
-    activeMonitors.delete(taskId);
-    console.log(`[Monitor] Stopped monitoring for task ${taskId}`);
-    return true;
-  }
-  return false;
-}
-
 export function stopAllMonitors(): void {
   for (const [taskId, monitor] of activeMonitors) {
     clearInterval(monitor.intervalId);
@@ -256,8 +240,4 @@ export function stopAllMonitors(): void {
 
 export function getActiveMonitors(): TaskId[] {
   return Array.from(activeMonitors.keys());
-}
-
-export function getMonitor(taskId: TaskId): ActiveMonitor | undefined {
-  return activeMonitors.get(taskId);
 }

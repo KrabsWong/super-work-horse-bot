@@ -1,6 +1,6 @@
 import type { CronTaskConfig } from './types';
 import type { ExecutionPlan } from './planner';
-import type { TaskManager, TaskCompletionCallback } from '../task-manager';
+import type { TaskManager } from '../task-manager';
 import type { ExecutionContext } from '../../types';
 
 export interface OrchestratorResult {
@@ -73,9 +73,5 @@ export class TaskOrchestrator {
         plan,
       };
     }
-  }
-
-  setTaskCompletionCallback(callback: TaskCompletionCallback): void {
-    this.taskManager.setTaskCompletionCallback(callback);
   }
 }

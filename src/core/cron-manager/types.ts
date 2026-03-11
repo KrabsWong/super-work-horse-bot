@@ -30,9 +30,3 @@ export interface TaskValidationResult {
   errors: string[];
   warnings: string[];
 }
-
-export interface CronManagerOptions {
-  cronDir: string;
-  messenger: 'telegram' | 'discord';
-  chatId: string;
-}
