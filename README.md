@@ -12,6 +12,34 @@ A Telegram bot server that receives slash commands and executes server-side AI c
 - **Task Monitoring** - Automatic tracking of task completion with timeout protection (1 hour max)
 - **Graceful Process Control** - `/jobs stop` command to stop running tasks or cancel queued tasks
 - **Today in History Integration** - Smart research topic generation based on historical events
+- **Thin Router Architecture** - Business logic lives in target project, bot only handles routing
+
+## Architecture
+
+This bot uses a **Thin Router Architecture**:
+
+```
+Telegram User -> temp-dir (thin router) -> opencode -> target project (business logic)
+```
+
+**temp-dir (this project):**
+- Receives Telegram/Discord messages
+- Routes to target project via opencode CLI
+- Manages tmux sessions
+- Monitors execution
+
+**Target Project (e.g., vibe-research):**
+- Defines business logic
+- Template selection
+- Content generation rules
+- Quality standards
+
+**Benefits:**
+- Bot can serve multiple projects with different workflows
+- Business logic is centralized in target projects
+- Easy to test and maintain
+
+See `docs/thin-router-architecture.md` for details.
 
 ## Prerequisites
 
@@ -58,7 +86,7 @@ A Telegram bot server that receives slash commands and executes server-side AI c
    commands:
      - name: research
        dir: ~/workspace/research
-      prompt: /opsx:propose
+      prompt: /research
        session: research-bot
        model: opencode/glm-4.7-free
    
@@ -123,7 +151,7 @@ In Telegram, send:
 
  This will execute on your server:
   ```bash
-  cd ~/workspace/research && opencode --model="opencode/glm-4.7-free" --prompt="/opsx:propose 帮我生成一份研究报告，介绍新能源汽车领域涉及到哪些技术"
+  cd ~/workspace/research && opencode --model="opencode/glm-4.7-free" --prompt="/research 帮我生成一份研究报告，介绍新能源汽车领域涉及到哪些技术"
   ```
 
 The command runs in a dedicated tmux session named `research-bot` (configurable via `COMMAND_RESEARCH_SESSION`).
@@ -228,7 +256,7 @@ commands:
   # Using opencode (default CLI)
   - name: research
     dir: ~/workspace/research
-    prompt: /opsx:propose
+    prompt: /research
     session: research-bot
     model: opencode/glm-4.7-free
   

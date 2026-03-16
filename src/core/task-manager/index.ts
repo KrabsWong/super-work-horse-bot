@@ -160,27 +160,15 @@ export class TaskManager {
       const testModeInstructions = `
 [TEST MODE]
 You are in test mode. The user has prefixed their request with "大哥测试下".
-Please read 'openspec/project.md' to understand the project structure and execution flow.
-Then respond to the user's request directly without following the full research workflow.
+Please respond to the user's request directly without following the full research workflow.
 
 User Request:
 `;
       fullPrompt = testModeInstructions + task.args;
     } else {
-      // 正常模式：使用 openspec 流程
-      let additionalInstructions = `
-IMPORTANT INSTRUCTIONS:
-1. This is a RESEARCH task.
-2. **STEP 1**: Read 'openspec/project.md'.
-3. **STEP 2 (Routing)**: Based on my request, CHOOSE the most appropriate template from the Template Selection Strategy section.
-   - If I asked for features/pricing -> Use 'product-requirement-standard.md'
-   - If I asked for feasibility/integration -> 'Use tech-feasibility-standard.md'
-4. **Action**: Create the directory and generated files strictly following the chosen template's structure.
-5. **Language**: Report content in CHINESE (中文).
-6. **Output**: Start by stating: 'Identifying Intent... Selected Template: [Template Name]'.
-`;
-
-      additionalInstructions += buildCompletionInstruction(task.statusFile);
+      // 薄路由层：只构造最基本的 prompt，所有业务逻辑由目标项目的 /research 处理
+      // 目标项目（vibe-research）定义了完整的 Plan Agent 工作流程
+      const additionalInstructions = buildCompletionInstruction(task.statusFile);
       fullPrompt = `${cmdConfig.prompt} ${task.args}${additionalInstructions}`;
     }
 
