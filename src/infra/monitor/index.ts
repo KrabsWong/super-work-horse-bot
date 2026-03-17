@@ -56,13 +56,7 @@ export function generateStatusFilePath(
 }
 
 export function buildCompletionInstruction(statusFile: string): string {
-  return `
-
-**任务完成后，执行以下命令通知系统：**
-
-touch ${statusFile}
-
-**注意：** 必须在所有操作（包括 git commit/push）完成后才执行此命令。`;
+  return ` --status-file=${statusFile}`;
 }
 
 async function checkStatusFileExists(statusFile: string): Promise<boolean> {
