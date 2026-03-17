@@ -35,7 +35,7 @@ commands:
     # Working directory for this command
     dir: ~/workspace/research
     # Prompt prefix sent to opencode
-    prompt: /opsx:propose
+    prompt: /research
     # tmux session name prefix
     session: research-bot
     # AI model to use (optional)
@@ -46,7 +46,7 @@ commands:
   # Example: Add more commands
   # - name: dev
   #   dir: ~/workspace/dev
-  #   prompt: /opsx:propose
+  #   prompt: /research
   #   session: dev-bot
   #   model: opencode/glm-4.7-free
   #   maxConcurrent: 2
