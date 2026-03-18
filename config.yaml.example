@@ -29,13 +29,19 @@ logLevel: info
 # =============================================================================
 # Commands Configuration
 # =============================================================================
+#
+# Each command defines a Telegram/Discord slash command and its execution context.
+# The command 'name' becomes both the slash command (e.g., /research) and the
+# opencode prompt prefix (e.g., "/research <user input> --status-file=...").
+#
+# Example: name: research
+#   - Telegram command: /research <text>
+#   - Generated prompt: /research <text> --status-file=/tmp/...
 
 commands:
   - name: research
     # Working directory for this command
     dir: ~/workspace/research
-    # Prompt prefix sent to opencode
-    prompt: /research
     # tmux session name prefix
     session: research-bot
     # AI model to use (optional)
@@ -43,31 +49,32 @@ commands:
     # Maximum concurrent tasks for this command
     maxConcurrent: 3
 
-  # Example: Add more commands
-  # - name: dev
-  #   dir: ~/workspace/dev
-  #   prompt: /research
-  #   session: dev-bot
-  #   model: opencode/glm-4.7-free
-  #   maxConcurrent: 2
+  # Example: Cron task command
+  # The 'name' field becomes the auto-command for cron tasks
+  - name: auto-daily-paper
+    dir: ~/workspace/paper
+    session: paper-bot
+    model: opencode/glm-4.7-free
+    maxConcurrent: 1
 
 # =============================================================================
 # Scheduled Tasks (Cron Tasks)
 # =============================================================================
 #
-# Scheduled tasks are now configured via Markdown files in the cron/ directory.
+# Scheduled tasks are configured via Markdown files in the cron/ directory.
 # Each .md file represents a scheduled task with YAML frontmatter.
 #
-# Example cron/daily-research.md:
+# Example cron/daily-paper.md:
 # ---
-# name: daily-research
+# name: daily-paper
 # schedule: 每天 09:00
 # messenger: telegram
 # enabled: true
+# command: /auto-daily-paper
 # ---
 #
-# 每天早上9点，从 GitHub trending 中选择一个热门项目，
-# 进行深入研究分析，生成研究报告。
+# The 'command' field in frontmatter must match a command 'name' from above.
+# When triggered, the bot executes: /auto-daily-paper <markdown body> --status-file=...
 #
 # Supported schedule formats:
 # - "每天 HH:MM" - Every day at specific time

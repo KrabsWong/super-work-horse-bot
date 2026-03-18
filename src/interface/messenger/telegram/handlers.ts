@@ -41,7 +41,6 @@ export async function handleHelp(ctx: PlatformContext): Promise<void> {
     const cmdConfig = config.commands[cmdName];
     commandDetails += `🔸 /${cmdName} <text>\n`;
     commandDetails += `   📁 工作目录: ${cmdConfig.dir}\n`;
-    commandDetails += `   📝 提示词: ${cmdConfig.prompt}\n`;
     commandDetails += `   🖥️ 会话: ${cmdConfig.session}\n`;
     commandDetails += `   ⚡ 最大并发: ${cmdConfig.maxConcurrent}\n\n`;
   }

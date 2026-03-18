@@ -43,11 +43,11 @@ export async function handleCronList(ctx: CommandContext, page: number = 0, edit
       const nextRun = task.nextRun
         ? task.nextRun.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
         : 'N/A';
-      const desc = task.config.description.substring(0, 50);
+      const desc = task.config.description?.substring(0, 50) || '无描述';
 
       lines.push(`${status} <b>${name}</b>`);
       lines.push(`   ⏰ ${schedule} | 下次: ${nextRun}`);
-      lines.push(`   📝 ${desc}${task.config.description.length > 50 ? '...' : ''}`);
+      lines.push(`   📝 ${desc}${(task.config.description?.length || 0) > 50 ? '...' : ''}`);
       lines.push('');
 
       buttons.push([
@@ -176,9 +176,11 @@ export async function handleCronShow(ctx: CommandContext, fromPage: number = 0):
   }
 
   lines.push('');
+  lines.push('<b>自动化命令:</b> <code>' + task.config.autoCommand + '</code>');
+  lines.push('');
   lines.push('<b>任务描述:</b>');
   lines.push('━━━━━━━━━━━━━━');
-  lines.push(task.config.description);
+  lines.push(task.config.description || '暂无描述');
   lines.push('━━━━━━━━━━━━━━');
 
   const buttons: InlineButton[][] = [

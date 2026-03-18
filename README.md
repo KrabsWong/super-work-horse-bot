@@ -78,25 +78,28 @@ See `docs/thin-router-architecture.md` for details.
    cp config.yaml.example config.yaml
    ```
    
-   Edit `config.yaml` and configure your bot token and commands:
-   ```yaml
-   telegramBotToken: your_bot_token_here
-   logLevel: info
-   
-   commands:
-     - name: research
-       dir: ~/workspace/research
-      prompt: /research
-       session: research-bot
-       model: opencode/glm-4.7-free
-   
-   cronTasks:
-     - name: daily-research
-       schedule: "0 9 * * *"
-       command: research
-       chatId: 123456789
-       enabled: true
-   ```
+    Edit `config.yaml` and configure your bot token and commands:
+    ```yaml
+    platforms:
+      activePlatform: telegram
+      telegram:
+        token: your_telegram_bot_token_here
+    
+    logLevel: info
+    
+    commands:
+      - name: research
+        dir: ~/workspace/research
+        session: research-bot
+        model: opencode/glm-4.7-free
+        maxConcurrent: 3
+    
+      - name: auto-daily-paper
+        dir: ~/workspace/paper
+        session: paper-bot
+        model: opencode/glm-4.7-free
+        maxConcurrent: 1
+    ```
 
 ## Getting Your Bot Token
 
@@ -213,12 +216,14 @@ Each command in the `commands` array:
 
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `name` | Yes | - | Command name (used as `/<name>`) |
+| `name` | Yes | - | Command name (used as `/<name>` and prompt prefix `/<name>`) |
 | `dir` | Yes | - | Working directory for the command |
-| `prompt` | Yes | - | Prompt format |
 | `session` | No | `<name>-bot` | tmux session name |
 | `model` | No | - | AI model (e.g., `opencode/glm-4.7-free`, `claude-sonnet-4-20250514`) |
 | `cli` | No | `{type: 'opencode'}` | CLI tool configuration |
+| `maxConcurrent` | No | `3` | Maximum concurrent tasks for this command |
+
+**How it works:** The `name` field becomes both the Telegram/Discord slash command (e.g., `/research`) and the opencode prompt prefix. When executed, the bot generates: `/<name> <user input> --status-file=...`
 
 ### CLI Configuration
 
@@ -235,17 +240,41 @@ The `cli` field allows you to choose between different AI CLI tools:
 
 ### Cron Task Configuration
 
-Each task in the `cronTasks` array:
+Scheduled tasks are configured via Markdown files in the `cron/` directory. Each `.md` file contains YAML frontmatter with task configuration.
+
+**Frontmatter Fields:**
 
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `name` | Yes | - | Task name (for logging) |
-| `schedule` | Yes | - | Cron expression (e.g., `0 9 * * *`) |
-| `command` | Yes | - | References a command name from `commands` |
-| `chatId` | Yes | - | Telegram chat ID to send notifications |
-| `dir` | No | inherits from command | Working directory |
-| `session` | No | `<command>-cron` | tmux session name |
+| `name` | Yes | - | Task name (for logging and identification) |
+| `schedule` | Yes | - | Time expression (e.g., `每天 09:00`, `每周一 08:00`) |
+| `messenger` | No | `telegram` | Platform to send notifications (`telegram` or `discord`) |
 | `enabled` | No | `true` | Whether the task is active |
+| `command` | Yes | - | Command name from `commands` config (without `/` prefix) |
+
+**Example:** `cron/daily-paper.md`
+```yaml
+---
+name: daily-paper
+schedule: 每天 09:00
+messenger: telegram
+enabled: true
+command: auto-daily-paper
+---
+
+每天早上9点自动从 Hugging Face Papers 获取最新论文并进行深度解读...
+```
+
+**How it works:** When triggered, the bot executes: `/<command> <markdown body> --status-file=...`
+
+**Supported schedule formats:**
+- `每天 HH:MM` - Daily at specific time
+- `每周一 HH:MM` - Every Monday
+- `工作日 HH:MM` - Weekdays only (Mon-Fri)
+- `每周末 HH:MM` - Weekends only
+- `每小时` - Every hour
+- `每N小时` - Every N hours
+- Standard cron: `0 9 * * *`
 
 ### Example: Adding Custom Commands
 
@@ -253,17 +282,23 @@ Add to your `config.yaml`:
 
 ```yaml
 commands:
-  # Using opencode (default CLI)
+  # Interactive research command
   - name: research
     dir: ~/workspace/research
-    prompt: /research
     session: research-bot
     model: opencode/glm-4.7-free
-  
+    maxConcurrent: 3
+
+  # Automated daily paper analysis (for cron tasks)
+  - name: auto-daily-paper
+    dir: ~/workspace/paper
+    session: paper-bot
+    model: opencode/glm-4.7-free
+    maxConcurrent: 1
+
   # Using claude CLI
   - name: claude-task
     dir: ~/workspace/claude
-    prompt: "Help me with"
     session: claude-bot
     model: claude-sonnet-4-20250514
     cli:
@@ -276,7 +311,7 @@ Restart the bot:
 bun start
 ```
 
-The `/research` and `/claude-task` commands will now be available!
+The `/research`, `/auto-daily-paper`, and `/claude-task` commands will now be available!
 
 ## Security
 

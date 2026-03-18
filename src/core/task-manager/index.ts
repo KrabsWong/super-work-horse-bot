@@ -166,10 +166,9 @@ User Request:
 `;
       fullPrompt = testModeInstructions + task.args;
     } else {
-      // 薄路由层：只构造最基本的 prompt，所有业务逻辑由目标项目的 /research 处理
-      // 目标项目（vibe-research）定义了完整的 Plan Agent 工作流程
+      // 薄路由层：使用 commandName 生成 prompt
       const additionalInstructions = buildCompletionInstruction(task.statusFile);
-      fullPrompt = `${cmdConfig.prompt} ${task.args}${additionalInstructions}`;
+      fullPrompt = `/${task.commandName} ${task.args}${additionalInstructions}`;
     }
 
     const cliCmd = buildCliCommand(cmdConfig.cli, cmdConfig.model, fullPrompt);

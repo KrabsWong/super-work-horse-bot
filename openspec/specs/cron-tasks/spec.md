@@ -13,9 +13,15 @@ The system SHALL support Markdown-based task configuration files with YAML front
 #### Scenario: Parse valid task configuration
 
 - **WHEN** a Markdown file is placed in the `cron/` directory
-- **AND** the file contains valid YAML frontmatter with `name`, `schedule`, `messenger` fields
+- **AND** the file contains valid YAML frontmatter with `name`, `schedule`, `messenger`, `command` fields
 - **THEN** the system SHALL parse the configuration
 - **AND** register the task in the scheduler
+
+#### Scenario: Missing required command field
+
+- **WHEN** a task file does not contain the `command` field
+- **THEN** the system SHALL log an error
+- **AND** skip the task registration
 
 #### Scenario: Invalid configuration handling
 
@@ -140,3 +146,41 @@ The system SHALL provide a unified command interface for task management.
 - **WHEN** user sends `/cron disable <name>`
 - **THEN** the system SHALL set the task enabled flag to false
 - **AND** unschedule the task
+
+### Requirement: Explicit Auto Command Declaration
+
+The system SHALL support explicit command declaration for automated tasks via the `command` field in frontmatter.
+
+#### Scenario: Parse task with explicit command
+
+- **WHEN** a task file contains `command` field in frontmatter (e.g., `command: auto-daily-research`)
+- **AND** the `command` value matches a command `name` from the `commands` configuration
+- **THEN** the system SHALL use `/<command>` as the execution prompt prefix
+- **AND** append the markdown body content to the prompt
+- **AND** append `--status-file` parameter for completion tracking
+
+#### Scenario: Missing required command field
+
+- **WHEN** a task file does not contain the `command` field
+- **THEN** the system SHALL log an error with the file name
+- **AND** skip the task registration
+
+### Requirement: Command Naming Convention
+
+The system SHOULD recommend command naming conventions for clarity and consistency.
+
+#### Scenario: Document naming convention
+
+- **WHEN** a user views task documentation or examples
+- **THEN** the system SHOULD suggest the following naming patterns:
+  - Use `cron-` prefix for scheduled tasks (e.g., `/cron-daily-report`, `/cron-weekly-sync`)
+  - Use `auto-` prefix for automated workflows (e.g., `/auto-github-trending`, `/auto-backup`)
+  - Use kebab-case for multi-word commands
+  - Make command names descriptive of the task purpose
+
+#### Scenario: Thin router architecture
+
+- **WHEN** a cron task is triggered
+- **THEN** the system SHALL generate an execution prompt in the format: `/<command> <markdown-body> --status-file=<path>`
+- **AND** the target project SHALL handle all business logic based on the command identifier
+- **AND** the markdown body content SHALL be passed as-is for context

@@ -12,7 +12,6 @@ interface RawCliConfig {
 interface RawCommandConfig {
   name: string;
   dir: string;
-  prompt: string;
   session?: string;
   model?: string;
   cli?: RawCliConfig;
@@ -60,11 +59,6 @@ function validateCommandConfig(raw: RawCommandConfig, index: number): CommandCon
     return null;
   }
 
-  if (!raw.prompt) {
-    console.error(`ERROR: Command '${raw.name}' is missing required field 'prompt'`);
-    return null;
-  }
-
   if (raw.dir.includes(';')) {
     console.error(`ERROR: Command '${raw.name}' has invalid directory path (contains semicolon)`);
     return null;
@@ -88,10 +82,9 @@ function validateCommandConfig(raw: RawCommandConfig, index: number): CommandCon
 
   return {
     dir: raw.dir,
-    prompt: raw.prompt,
     session: raw.session || `${raw.name}-bot`,
     model: raw.model,
-    cli: raw.cli ? { 
+    cli: raw.cli ? {
       type: raw.cli.type as CliType,
       skipPermissions: raw.cli.skipPermissions,
     } : undefined,

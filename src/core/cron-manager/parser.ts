@@ -26,20 +26,22 @@ export function parseTaskFile(content: string, filename: string): ParsedTaskFile
     const schedule = frontmatter.schedule as string;
     const messenger = (frontmatter.messenger as 'telegram' | 'discord') || 'telegram';
     const enabled = frontmatter.enabled !== false;
-    
-    if (!name || !schedule) {
-      console.error(`[Parser] Missing required fields in ${filename}: name=${!!name}, schedule=${!!schedule}`);
+    const autoCommand = frontmatter.command as string;
+
+    if (!name || !schedule || !autoCommand) {
+      console.error(`[Parser] Missing required fields in ${filename}: name=${!!name}, schedule=${!!schedule}, command=${!!autoCommand}`);
       return null;
     }
-    
+
     return {
       frontmatter: {
         name,
         schedule,
         messenger,
         enabled,
+        autoCommand,
       },
-      body: body.trim(),
+      body: body.trim() || undefined,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -50,20 +52,21 @@ export function parseTaskFile(content: string, filename: string): ParsedTaskFile
 
 export function createTaskConfig(parsed: ParsedTaskFile, filename: string): CronTaskConfig | null {
   const { frontmatter, body } = parsed;
-  const { name, schedule, messenger, enabled } = frontmatter;
-  
+  const { name, schedule, messenger, enabled, autoCommand } = frontmatter;
+
   const { cronExpression, matched } = parseTimeExpression(schedule);
-  
+
   if (!matched || !cronExpression) {
     console.error(`[Parser] Cannot parse schedule "${schedule}" in ${filename}`);
     return null;
   }
-  
+
   return {
     name,
     schedule,
     messenger,
     enabled: enabled ?? true,
+    autoCommand,
     description: body,
     cronExpression,
   };

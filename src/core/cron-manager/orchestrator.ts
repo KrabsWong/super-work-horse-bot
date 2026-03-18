@@ -24,16 +24,20 @@ export class TaskOrchestrator {
     console.log(`[TaskOrchestrator] Executing cron task: ${taskConfig.name}`);
 
     try {
+      const fullArgs = taskConfig.description
+        ? `${taskConfig.autoCommand} ${taskConfig.description}`
+        : taskConfig.autoCommand;
+
       const plan: ExecutionPlan = {
         steps: [{
           type: 'command',
           command: 'execute',
-          args: taskConfig.description,
+          args: fullArgs,
         }],
-        description: taskConfig.description,
+        description: taskConfig.description || taskConfig.autoCommand,
       };
 
-      console.log(`[TaskOrchestrator] Executing as single step`);
+      console.log(`[TaskOrchestrator] Executing: ${taskConfig.autoCommand}`);
 
       return await this.executeSingleStep(plan, context);
     } catch (error) {
@@ -42,7 +46,7 @@ export class TaskOrchestrator {
       return {
         success: false,
         error: message,
-        plan: { steps: [], description: taskConfig.description },
+        plan: { steps: [], description: taskConfig.description || taskConfig.autoCommand },
       };
     }
   }

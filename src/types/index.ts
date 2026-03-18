@@ -17,7 +17,6 @@ export interface CliConfig {
  */
 export interface CommandConfig {
   dir: string;
-  prompt: string;
   session: string;
   model?: string;
   /** CLI tool configuration. Defaults to opencode if not specified */
