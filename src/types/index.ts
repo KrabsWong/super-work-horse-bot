@@ -41,7 +41,6 @@ export interface Config {
   logLevel: string;
   worktreeBaseDir?: string;
   commands: Record<string, CommandConfig>;
-  cronTasks: Record<string, CronTaskConfig>;
   platforms: PlatformsConfig;
 }
 

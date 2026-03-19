@@ -24,44 +24,43 @@ export class TaskOrchestrator {
     console.log(`[TaskOrchestrator] Executing cron task: ${taskConfig.name}`);
 
     try {
-      const fullArgs = taskConfig.description
-        ? `${taskConfig.autoCommand} ${taskConfig.description}`
-        : taskConfig.autoCommand;
+      const args = taskConfig.description || '';
 
       const plan: ExecutionPlan = {
         steps: [{
           type: 'command',
           command: 'execute',
-          args: fullArgs,
+          args,
         }],
-        description: taskConfig.description || taskConfig.autoCommand,
+        description: taskConfig.description || taskConfig.commandName,
       };
 
-      console.log(`[TaskOrchestrator] Executing: ${taskConfig.autoCommand}`);
+      console.log(`[TaskOrchestrator] Executing command: ${taskConfig.commandName}`);
 
-      return await this.executeSingleStep(plan, context);
+      return await this.executeSingleStep(taskConfig.commandName, plan, context);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       console.error(`[TaskOrchestrator] Error executing task: ${message}`);
       return {
         success: false,
         error: message,
-        plan: { steps: [], description: taskConfig.description || taskConfig.autoCommand },
+        plan: { steps: [], description: taskConfig.description || taskConfig.commandName },
       };
     }
   }
 
   private async executeSingleStep(
+    commandName: string,
     plan: ExecutionPlan,
     context: ExecutionContext
   ): Promise<OrchestratorResult> {
     const step = plan.steps[0];
     const args = step.args || '';
 
-    console.log(`[TaskOrchestrator] Executing single step: ${args}`);
+    console.log(`[TaskOrchestrator] Executing single step for command '${commandName}': ${args}`);
 
     try {
-      const result = await this.taskManager.createTask('research', args, context);
+      const result = await this.taskManager.createTask(commandName, args, context);
 
       return {
         success: true,

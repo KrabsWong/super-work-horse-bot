@@ -176,7 +176,7 @@ export async function handleCronShow(ctx: CommandContext, fromPage: number = 0):
   }
 
   lines.push('');
-  lines.push('<b>自动化命令:</b> <code>' + task.config.autoCommand + '</code>');
+  lines.push('<b>执行命令:</b> <code>' + task.config.commandName + '</code>');
   lines.push('');
   lines.push('<b>任务描述:</b>');
   lines.push('━━━━━━━━━━━━━━');

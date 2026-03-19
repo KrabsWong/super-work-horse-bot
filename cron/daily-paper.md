@@ -3,7 +3,7 @@ name: daily-paper
 schedule: 每天 09:00
 messenger: telegram
 enabled: true
-command: auto-daily-paper
+command: auto-research
 ---
 
 <!--

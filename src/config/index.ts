@@ -1,8 +1,8 @@
-import type { Config, CommandConfig, CronTaskConfig, CliType } from '../types';
+import type { Config, CommandConfig, CliType } from '../types';
 import type { PlatformsConfig } from '../interface/messenger/types';
+import yaml from 'js-yaml';
 
 const DEFAULT_MAX_CONCURRENT = 3;
-import yaml from 'js-yaml';
 
 interface RawCliConfig {
   type: string;
@@ -18,18 +18,9 @@ interface RawCommandConfig {
   maxConcurrent?: number;
 }
 
-interface RawCronTaskConfig {
-  name: string;
-  schedule: string;
-  command: string;
-  chatId: string | number;
-  dir?: string;
-  session?: string;
-  enabled?: boolean;
-}
-
 interface RawPlatformConfig {
   token: string;
+  chatId?: string | number;
 }
 
 interface RawPlatformsConfig {
@@ -42,7 +33,6 @@ interface YamlConfig {
   logLevel?: string;
   worktreeBaseDir?: string;
   commands: RawCommandConfig[];
-  cronTasks?: RawCronTaskConfig[];
   platforms?: RawPlatformsConfig;
 }
 
@@ -92,61 +82,6 @@ function validateCommandConfig(raw: RawCommandConfig, index: number): CommandCon
   };
 }
 
-function validateCronTaskConfig(
-  raw: RawCronTaskConfig,
-  index: number,
-  commands: Record<string, CommandConfig>
-): CronTaskConfig | null {
-  if (!raw.name) {
-    console.error(`ERROR: Cron task at index ${index} is missing required field 'name'`);
-    return null;
-  }
-
-  if (!raw.schedule) {
-    console.error(`ERROR: Cron task '${raw.name}' is missing required field 'schedule'`);
-    return null;
-  }
-
-  if (!raw.command) {
-    console.error(`ERROR: Cron task '${raw.name}' is missing required field 'command'`);
-    return null;
-  }
-
-  if (!raw.chatId) {
-    console.error(`ERROR: Cron task '${raw.name}' is missing required field 'chatId'`);
-    return null;
-  }
-
-  const chatIdNumber = typeof raw.chatId === 'number' ? raw.chatId : parseInt(raw.chatId, 10);
-  if (isNaN(chatIdNumber)) {
-    console.error(`ERROR: Cron task '${raw.name}' has invalid chatId '${raw.chatId}', must be a number`);
-    return null;
-  }
-
-  const baseCommand = commands[raw.command];
-  if (!baseCommand) {
-    console.error(`ERROR: Cron task '${raw.name}' references unknown command '${raw.command}'`);
-    console.error(`       Available commands: ${Object.keys(commands).join(', ')}`);
-    return null;
-  }
-
-  const dir = raw.dir || baseCommand.dir;
-
-  if (dir.includes(';')) {
-    console.error(`ERROR: Cron task '${raw.name}' has invalid directory path (contains semicolon)`);
-    return null;
-  }
-
-  return {
-    schedule: raw.schedule,
-    dir,
-    session: raw.session || `${raw.command}-cron`,
-    chatId: chatIdNumber,
-    commandName: raw.command,
-    enabled: raw.enabled !== false,
-  };
-}
-
 async function loadConfigFromYaml(configPath: string): Promise<Config> {
   try {
     const file = Bun.file(configPath);
@@ -183,25 +118,12 @@ async function loadConfigFromYaml(configPath: string): Promise<Config> {
       throw new Error('No valid commands loaded from configuration');
     }
 
-    const cronTasks: Record<string, CronTaskConfig> = {};
-    
-    if (parsed.cronTasks && Array.isArray(parsed.cronTasks)) {
-      for (let i = 0; i < parsed.cronTasks.length; i++) {
-        const raw = parsed.cronTasks[i];
-        const validated = validateCronTaskConfig(raw, i, commands);
-        if (validated) {
-          cronTasks[raw.name] = validated;
-          console.log(`Loaded cron task '${raw.name}': schedule=${validated.schedule}, chatId=${validated.chatId}`);
-        }
-      }
-    }
-
     const platforms = normalizePlatformsConfig(parsed);
 
-    const activeToken = platforms.activePlatform === 'telegram' 
-      ? platforms.telegram.token 
+    const activeToken = platforms.activePlatform === 'telegram'
+      ? platforms.telegram.token
       : platforms.discord.token;
-    
+
     if (!activeToken) {
       throw new Error(`${platforms.activePlatform} token is required in config.yaml`);
     }
@@ -210,7 +132,6 @@ async function loadConfigFromYaml(configPath: string): Promise<Config> {
       logLevel: parsed.logLevel || 'info',
       worktreeBaseDir: parsed.worktreeBaseDir,
       commands,
-      cronTasks,
       platforms,
     };
   } catch (error) {
@@ -252,7 +173,6 @@ export async function loadConfiguration(configPath?: string): Promise<Config> {
 export const config: Config = {
   logLevel: 'info',
   commands: {},
-  cronTasks: {},
   platforms: {
     activePlatform: 'telegram',
     telegram: { token: '' },

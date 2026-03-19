@@ -51,6 +51,7 @@ export interface MessengerPlatform extends MessengerClient {
 
 export interface PlatformConfig {
   token: string;
+  chatId?: string | number;
 }
 
 export interface PlatformsConfig {

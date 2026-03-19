@@ -7,6 +7,7 @@ import { TaskOrchestrator } from '../cron-manager/orchestrator';
 import { TaskReporter } from '../cron-manager/reporter';
 import type { CronTaskConfig } from '../cron-manager/types';
 import { startMonitoring } from '../../infra/monitor';
+import { config } from '../../config';
 
 export { taskRegistry, type ScheduledTask } from './registry';
 
@@ -23,8 +24,8 @@ async function executeMarkdownTask(
 
   const startTime = Date.now();
   const messengerClient = registry.getMessengerClient();
-  const chatId = taskConfig.messenger === 'telegram'
-    ? registry.getDefaultChatId()
+  const chatId = taskConfig.messenger === 'discord'
+    ? String(config.platforms.discord.chatId || registry.getDefaultChatId())
     : registry.getDefaultChatId();
 
   try {

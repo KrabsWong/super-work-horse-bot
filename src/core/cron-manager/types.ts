@@ -3,8 +3,8 @@ export interface CronTaskConfig {
   schedule: string;
   messenger: 'telegram' | 'discord';
   enabled: boolean;
-  autoCommand: string;      // 显式声明的自动化命令（如 /auto-daily-research）
-  description?: string;     // 可选的任务描述（仅用于文档说明）
+  commandName: string;
+  description?: string;
   cronExpression?: string;
   lastRun?: number;
   nextRun?: number;
@@ -16,7 +16,7 @@ export interface ParsedTaskFile {
     schedule: string;
     messenger: 'telegram' | 'discord';
     enabled?: boolean;
-    autoCommand: string;
+    command: string;
   };
   body: string | undefined;
 }

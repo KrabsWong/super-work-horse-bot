@@ -89,15 +89,13 @@ async function main(): Promise<void> {
 
   try {
     const activeMessenger = messengerManager.getPlatform(config.platforms.activePlatform);
-    
+
     if (activeMessenger) {
-      const taskNames = Object.keys(config.cronTasks);
-      let defaultChatId = '0';
-      if (taskNames.length > 0) {
-        const firstTask = config.cronTasks[taskNames[0]];
-        defaultChatId = String(firstTask.chatId);
-      }
-      
+      const { activePlatform, discord } = config.platforms;
+      const defaultChatId = activePlatform === 'discord'
+        ? String(discord.chatId || '0')
+        : '';
+
       await scheduler.initialize({
         messenger: activeMessenger,
         chatId: defaultChatId,
