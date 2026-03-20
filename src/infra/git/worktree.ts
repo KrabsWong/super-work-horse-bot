@@ -206,3 +206,35 @@ export async function listWorktrees(baseDir: string): Promise<string[]> {
   return paths;
 }
 
+/**
+ * 获取 worktree 的 GIT_DIR 路径
+ * worktree 的 GIT_DIR 位于主仓库的 .git/worktrees/ 目录下
+ */
+export async function getGitDirForWorktree(worktreePath: string): Promise<string | null> {
+  const { stdout, exitCode } = await execGitCommand(
+    ['rev-parse', '--git-dir'],
+    worktreePath
+  );
+  
+  if (exitCode !== 0) {
+    return null;
+  }
+  
+  return stdout.trim();
+}
+
+/**
+ * 生成 git 环境变量设置命令
+ * 用于在执行 git 操作前设置正确的 GIT_DIR 和 GIT_WORK_TREE
+ */
+export async function buildGitEnvCommand(worktreePath: string): Promise<string> {
+  const gitDir = await getGitDirForWorktree(worktreePath);
+  
+  if (!gitDir) {
+    console.warn(`[Worktree] Failed to get GIT_DIR for worktree: ${worktreePath}`);
+    return '';
+  }
+  
+  return `export GIT_DIR='${gitDir}' GIT_WORK_TREE='${worktreePath}'`;
+}
+

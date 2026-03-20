@@ -4,7 +4,7 @@ import { SlotManager } from './slot-manager';
 import { TaskQueue } from './queue';
 import type { TaskQueueItem } from './types';
 import { getCurrentBranch } from '../../infra/git/sync';
-import { createWorktree, removeWorktree } from '../../infra/git/worktree';
+import { createWorktree, removeWorktree, buildGitEnvCommand } from '../../infra/git/worktree';
 import { executeInTmux, sessionExists, killSession } from '../../infra/tmux/session';
 import { config } from '../../config';
 import { buildCliCommand } from '../../infra/cli/builder';
@@ -173,7 +173,20 @@ User Request:
 
     const cliCmd = buildCliCommand(cmdConfig.cli, cmdConfig.model, fullPrompt);
     const workDir = task.worktreePath || cmdConfig.dir;
-    const command = `cd ${workDir} && ${cliCmd}`;
+    
+    // 构建 git 环境变量设置命令
+    let gitEnvCmd = '';
+    if (task.worktreePath) {
+      gitEnvCmd = await buildGitEnvCommand(task.worktreePath);
+      if (gitEnvCmd) {
+        console.log(`[TaskManager] Git environment: ${gitEnvCmd}`);
+      }
+    }
+    
+    // 组合命令：先设置环境变量，再执行 CLI 命令
+    const command = gitEnvCmd 
+      ? `cd ${workDir} && ${gitEnvCmd} && ${cliCmd}`
+      : `cd ${workDir} && ${cliCmd}`;
 
     console.log(`[TaskManager] Executing task ${task.id} in session ${task.sessionName} (worktree: ${workDir})`);
     console.log(`[TaskManager] Mode: ${isTestMode ? 'TEST' : 'NORMAL'}`);
