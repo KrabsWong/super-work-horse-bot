@@ -6,15 +6,6 @@ enabled: true
 command: auto-research
 ---
 
-<!--
-定时任务命令命名建议：
-- 以 cron- 开头表示定时触发的任务，如: /cron-daily-report, /cron-weekly-sync
-- 以 auto- 开头表示自动化工作流，如: /auto-github-trending, /auto-backup
-- 使用 kebab-case 命名，清晰表达任务目的
-
-下游服务（目标项目）根据 command 字段自行实现对应的业务逻辑。
--->
-
 每天早上9点自动从 Hugging Face Papers 获取最新论文并进行深度解读。
 
 任务流程：
