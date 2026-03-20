@@ -126,7 +126,8 @@ export async function executeCommand(
     
     if (enableMonitoring && context.messenger && context.chatId && taskResult.status === 'running') {
       const task = taskManager.getTask(taskResult.taskId);
-      if (task) {
+      const cmdConfig = config.commands[commandName];
+      if (task && cmdConfig) {
         startMonitoring({
           taskId: taskResult.taskId,
           sessionName: taskResult.sessionName,
@@ -135,9 +136,11 @@ export async function executeCommand(
           chatId: context.chatId,
           taskName: `/${commandName}`,
           branchName: taskResult.branchName,
+          workDir: task.worktreePath || cmdConfig.dir,
           messageId: messageId || undefined,
           args: sanitized,
           startedAt: task.startedAt,
+          verifyGitPush: true,
           onProgress: async (taskId, duration) => {
             if (messageId && context.messenger && context.chatId) {
               await updateTaskMessage(context.messenger, String(context.chatId), messageId, {
@@ -170,7 +173,10 @@ export async function executeCommand(
             }
           },
           onFailure: async (taskId, reason, duration) => {
-            await taskManager.failTask(taskId, `Task ended unexpectedly (${reason})`);
+            const errorMessage = reason === 'git_push_failed'
+              ? 'Git push failed - remote branch not found. Code may not have been committed.'
+              : `Task ended unexpectedly (${reason})`;
+            await taskManager.failTask(taskId, errorMessage);
             if (messageId && context.messenger && context.chatId) {
               await updateTaskMessage(context.messenger, String(context.chatId), messageId, {
                 taskId,

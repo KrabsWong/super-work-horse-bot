@@ -1,8 +1,10 @@
 import type { MessengerClient, TaskId } from "../../types";
 import { hasOpencodeProcess, killOpencodeInSession, killSession } from "../tmux/session";
+import { checkRemoteBranchExists } from "../git/sync";
 
 const MONITOR_INTERVAL_MS = 10000;
 const MAX_MONITOR_DURATION_MS = 60 * 60 * 1000;
+const GIT_VERIFY_TIMEOUT_MS = 5 * 60 * 1000;
 
 interface ActiveMonitor {
   taskId: TaskId;
@@ -12,9 +14,12 @@ interface ActiveMonitor {
   intervalId: Timer;
   taskName: string;
   branchName: string;
+  workDir: string;
   messageId?: number | string;
   args: string;
   startedAt: number;
+  statusFileDetected: boolean;
+  statusFileDetectedAt?: number;
 }
 
 const activeMonitors = new Map<TaskId, ActiveMonitor>();
@@ -27,9 +32,11 @@ export interface MonitorOptions {
   chatId: number | string;
   taskName: string;
   branchName: string;
+  workDir: string;
   messageId?: number | string;
   args: string;
   startedAt?: number;
+  verifyGitPush?: boolean;
   onProgress?: (
     taskId: TaskId,
     duration: number,
@@ -41,7 +48,7 @@ export interface MonitorOptions {
   ) => Promise<void>;
   onFailure?: (
     taskId: TaskId,
-    reason: 'timeout' | 'unexpected_exit',
+    reason: 'timeout' | 'unexpected_exit' | 'git_push_failed',
     duration: number,
     killedCount?: number,
   ) => Promise<void>;
@@ -89,9 +96,11 @@ export function startMonitoring(options: MonitorOptions): void {
     statusFile,
     taskName,
     branchName,
+    workDir,
     messageId,
     args,
     startedAt,
+    verifyGitPush = true,
     onProgress,
     onCompletion,
     onFailure,
@@ -140,9 +149,78 @@ export function startMonitoring(options: MonitorOptions): void {
 
     const statusFileExists = await checkStatusFileExists(statusFile);
 
-    if (statusFileExists) {
+    if (!monitor.statusFileDetected && statusFileExists) {
+      monitor.statusFileDetected = true;
+      monitor.statusFileDetectedAt = Date.now();
       console.log(
-        `[Monitor] Status file detected for task ${taskId}, task completed`,
+        `[Monitor] Status file detected for task ${taskId}, waiting for git push verification`,
+      );
+    }
+
+    if (monitor.statusFileDetected && verifyGitPush) {
+      const gitVerifyElapsed = Date.now() - (monitor.statusFileDetectedAt || 0);
+      
+      if (gitVerifyElapsed > GIT_VERIFY_TIMEOUT_MS) {
+        console.error(
+          `[Monitor] Git push verification timeout for task ${taskId}. ` +
+          `Remote branch ${branchName} not found within ${GIT_VERIFY_TIMEOUT_MS}ms`
+        );
+
+        clearInterval(intervalId);
+        activeMonitors.delete(taskId);
+
+        const killedCount = await killOpencodeInSession(sessionName);
+        await cleanupStatusFile(statusFile);
+        await killSession(sessionName);
+
+        const durationSeconds = Math.round(elapsed / 1000);
+
+        if (onFailure) {
+          try {
+            await onFailure(taskId, 'git_push_failed', durationSeconds, killedCount);
+          } catch (cbError) {
+            console.error('[Monitor] onFailure callback error (git_push_failed):', cbError);
+          }
+        }
+        return;
+      }
+
+      const remoteExists = await checkRemoteBranchExists(workDir, branchName);
+
+      if (remoteExists) {
+        console.log(
+          `[Monitor] Status file and remote branch ${branchName} both verified, task completed`
+        );
+
+        clearInterval(intervalId);
+        activeMonitors.delete(taskId);
+
+        const killedCount = await killOpencodeInSession(sessionName);
+        await cleanupStatusFile(statusFile);
+        await killSession(sessionName);
+
+        const durationSeconds = Math.round(elapsed / 1000);
+
+        if (onCompletion) {
+          try {
+            await onCompletion(taskId, durationSeconds, killedCount);
+          } catch (cbError) {
+            console.error('[Monitor] onCompletion callback error:', cbError);
+          }
+        }
+        return;
+      }
+
+      console.log(
+        `[Monitor] Status file detected but remote branch ${branchName} not yet available, ` +
+        `retrying in ${MONITOR_INTERVAL_MS}ms... (${Math.round(gitVerifyElapsed / 1000)}s elapsed)`
+      );
+      return;
+    }
+
+    if (monitor.statusFileDetected && !verifyGitPush) {
+      console.log(
+        `[Monitor] Status file detected for task ${taskId} (git verification disabled), task completed`
       );
 
       clearInterval(intervalId);
@@ -203,9 +281,11 @@ export function startMonitoring(options: MonitorOptions): void {
     intervalId,
     taskName,
     branchName,
+    workDir,
     messageId,
     args,
     startedAt: startedAt || startTime,
+    statusFileDetected: false,
   });
 
   console.log(

@@ -55,6 +55,7 @@ async function executeMarkdownTask(
         const messageId = await reporter.sendReport(chatId, startingReport);
 
         if (task.status === 'running') {
+          const cmdConfig = config.commands[taskConfig.commandName];
           startMonitoring({
             taskId: result.taskId,
             sessionName: task.sessionName,
@@ -63,9 +64,11 @@ async function executeMarkdownTask(
             chatId: chatId,
             taskName: taskConfig.name,
             branchName: task.branchName,
+            workDir: task.worktreePath || cmdConfig?.dir || './',
             args: taskConfig.description || '',
             startedAt: task.startedAt,
             messageId: messageId || undefined,
+            verifyGitPush: true,
             onProgress: async (taskId, duration) => {
               const runningReport = reporter.createRunningReport(
                 taskConfig,
@@ -92,7 +95,10 @@ async function executeMarkdownTask(
               await reporter.sendReport(chatId, completedReport);
             },
             onFailure: async (taskId, reason, duration, killedCount) => {
-              await taskManager.failTask(taskId, `Task ended unexpectedly (${reason})`);
+              const errorMessage = reason === 'git_push_failed'
+                ? 'Git push failed - remote branch not found. Code may not have been committed.'
+                : `Task ended unexpectedly (${reason})`;
+              await taskManager.failTask(taskId, errorMessage);
               const errorReport = reporter.createTimeoutReport(
                 taskConfig,
                 task.startedAt || Date.now(),
