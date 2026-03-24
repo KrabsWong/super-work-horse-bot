@@ -1,10 +1,5 @@
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
 import { config, validateConfig, initializeConfig } from './config';
 import { checkTmuxAvailability } from './infra/tmux/session';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 import {
   handleStart,
   handleHelp,
@@ -101,13 +96,12 @@ async function main(): Promise<void> {
         ? String(discord.chatId || '0')
         : '';
 
-      const cronDir = join(__dirname, '..', 'cron');
-      console.log(`[Scheduler] Using cron directory: ${cronDir}`);
+      console.log(`[Scheduler] Using cron directory: ${config.cronDir}`);
 
       await scheduler.initialize({
         messenger: activeMessenger,
         chatId: defaultChatId,
-        cronDir,
+        cronDir: config.cronDir,
       });
     }
   } catch (error) {

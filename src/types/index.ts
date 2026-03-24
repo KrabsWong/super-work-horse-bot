@@ -40,6 +40,7 @@ export interface CronTaskConfig {
 export interface Config {
   logLevel: string;
   worktreeBaseDir?: string;
+  cronDir: string;
   commands: Record<string, CommandConfig>;
   platforms: PlatformsConfig;
 }

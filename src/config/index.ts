@@ -32,6 +32,7 @@ interface RawPlatformsConfig {
 interface YamlConfig {
   logLevel?: string;
   worktreeBaseDir?: string;
+  cronDir?: string;
   commands: RawCommandConfig[];
   platforms?: RawPlatformsConfig;
 }
@@ -131,6 +132,7 @@ async function loadConfigFromYaml(configPath: string): Promise<Config> {
     return {
       logLevel: parsed.logLevel || 'info',
       worktreeBaseDir: parsed.worktreeBaseDir,
+      cronDir: parsed.cronDir || './cron',
       commands,
       platforms,
     };
@@ -172,6 +174,7 @@ export async function loadConfiguration(configPath?: string): Promise<Config> {
 
 export const config: Config = {
   logLevel: 'info',
+  cronDir: './cron',
   commands: {},
   platforms: {
     activePlatform: 'telegram',

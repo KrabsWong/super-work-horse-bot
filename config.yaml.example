@@ -26,6 +26,10 @@ logLevel: info
 # Base directory for git worktrees (optional, defaults to parent of repo)
 # worktreeBaseDir: ~/workspace/worktrees
 
+# Directory containing cron task markdown files (optional, defaults to './cron')
+# Can be absolute path or relative to working directory
+# cronDir: ./cron
+
 # =============================================================================
 # Commands Configuration
 # =============================================================================
