@@ -1,10 +1,18 @@
 import { readdir, readFile, access } from 'fs/promises';
 import { join } from 'path';
+import { homedir } from 'os';
 import type { CronTaskConfig } from './types';
 import { parseTaskFile, createTaskConfig } from './parser';
 import { validateTaskConfig } from './validator';
 
 const DEBOUNCE_MS = 1000;
+
+function expandHomeDir(path: string): string {
+  if (path.startsWith('~/')) {
+    return join(homedir(), path.slice(2));
+  }
+  return path;
+}
 
 export class CronWatcher {
   private cronDir: string;
@@ -14,7 +22,7 @@ export class CronWatcher {
   private _watching: boolean = false;
 
   constructor(cronDir: string) {
-    this.cronDir = cronDir;
+    this.cronDir = expandHomeDir(cronDir);
   }
 
   onChange(callback: (tasks: Map<string, CronTaskConfig>) => void): void {
