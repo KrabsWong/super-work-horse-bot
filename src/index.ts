@@ -91,10 +91,10 @@ async function main(): Promise<void> {
     const activeMessenger = messengerManager.getPlatform(config.platforms.activePlatform);
 
     if (activeMessenger) {
-      const { activePlatform, discord } = config.platforms;
+      const { activePlatform, telegram, discord } = config.platforms;
       const defaultChatId = activePlatform === 'discord'
         ? String(discord.chatId || '0')
-        : '';
+        : String(telegram.chatId || '0');
 
       console.log(`[Scheduler] Using cron directory: ${config.cronDir}`);
 

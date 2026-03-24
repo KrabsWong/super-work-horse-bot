@@ -24,9 +24,7 @@ async function executeMarkdownTask(
 
   const startTime = Date.now();
   const messengerClient = registry.getMessengerClient();
-  const chatId = taskConfig.messenger === 'discord'
-    ? String(config.platforms.discord.chatId || registry.getDefaultChatId())
-    : registry.getDefaultChatId();
+  const chatId = registry.getDefaultChatId();
 
   try {
     const context = {
@@ -44,7 +42,9 @@ async function executeMarkdownTask(
       console.log(`Markdown task '${taskConfig.name}' started: ${result.taskId}`);
 
       const task = taskManager.getTask(result.taskId);
-      if (task && messengerClient && chatId) {
+      const requiresChatId = taskConfig.messenger === 'discord';
+      const canSendMessage = task && messengerClient && (!requiresChatId || chatId);
+      if (canSendMessage) {
         const startingReport = reporter.createStartingReport(
           taskConfig,
           result.plan,
@@ -118,7 +118,8 @@ async function executeMarkdownTask(
       console.error(`Markdown task '${taskConfig.name}' failed: ${error}`);
 
       const failedReport = reporter.createFailedReport(taskConfig, startTime, error, 'unknown', undefined, undefined);
-      if (messengerClient && chatId) {
+      const requiresChatIdForError = taskConfig.messenger === 'discord';
+      if (messengerClient && (!requiresChatIdForError || chatId)) {
         await reporter.sendReport(chatId, failedReport);
       }
     }
@@ -127,7 +128,8 @@ async function executeMarkdownTask(
     console.error(`Markdown task '${taskConfig.name}' error:`, errorMessage);
 
     const failedReport = reporter.createFailedReport(taskConfig, startTime, errorMessage, 'unknown', undefined, undefined);
-    if (messengerClient && chatId) {
+    const requiresChatIdForException = taskConfig.messenger === 'discord';
+    if (messengerClient && (!requiresChatIdForException || chatId)) {
       await reporter.sendReport(chatId, failedReport);
     }
   }
