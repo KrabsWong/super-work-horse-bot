@@ -1,4 +1,4 @@
-import { readdir, readFile } from 'fs/promises';
+import { readdir, readFile, access } from 'fs/promises';
 import { join } from 'path';
 import type { CronTaskConfig } from './types';
 import { parseTaskFile, createTaskConfig } from './parser';
@@ -23,6 +23,15 @@ export class CronWatcher {
 
   async start(): Promise<void> {
     console.log(`[CronWatcher] Starting to watch directory: ${this.cronDir}`);
+
+    try {
+      await access(this.cronDir);
+    } catch {
+      console.error(`[CronWatcher] ❌ CRITICAL: Cron directory does not exist: ${this.cronDir}`);
+      console.error(`[CronWatcher] Please ensure the directory exists or check your configuration`);
+      throw new Error(`Cron directory not found: ${this.cronDir}`);
+    }
+
     this._watching = true;
     await this.scan();
   }
