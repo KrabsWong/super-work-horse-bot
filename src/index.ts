@@ -101,7 +101,7 @@ async function main(): Promise<void> {
         ? String(discord.chatId || '0')
         : '';
 
-      const cronDir = join(__dirname, '..', '..', 'cron');
+      const cronDir = join(__dirname, '..', 'cron');
       console.log(`[Scheduler] Using cron directory: ${cronDir}`);
 
       await scheduler.initialize({
