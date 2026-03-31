@@ -218,12 +218,12 @@ export class Scheduler {
     try {
       const job = new Cron(
         config.cronExpression,
-        async () => {
-          await executeMarkdownTask(config, this.orchestrator, this.reporter, this.registry);
-        },
         {
           timezone: 'Asia/Shanghai',
           name: name,
+        },
+        async () => {
+          await executeMarkdownTask(config, this.orchestrator, this.reporter, this.registry);
         }
       );
 
